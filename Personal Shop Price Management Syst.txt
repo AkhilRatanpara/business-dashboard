@@ -1,0 +1,1327 @@
+Personal Shop Price Management System
+1. Project Overview
+Build a private, mobile-first web application for managing product/item prices for my submersible pump repair shop.
+The application is primarily for my personal use. I receive price updates for many different items from suppliers and need one centralized place to:
+
+Store all items
+Organize items into categories
+Search items very quickly
+Add new items
+Edit existing items
+Maintain three different prices for every item
+Automatically calculate profit
+Maintain a complete price-change history
+View recently changed prices
+View a dashboard with useful statistics
+Work properly on mobile phones and desktop/laptop
+Persist all data in a real PostgreSQL database
+Keep data available when navigating between pages
+Deploy the application on Vercel
+
+IMPORTANT:
+This must NOT be a static website where data disappears after refresh.
+All important data must be stored in PostgreSQL.
+When I update an item on /items, the updated data must immediately be available on /price-history, /dashboard, search results, category pages, and item details.
+
+2. Recommended Technology Stack
+Use:
+
+Next.js
+TypeScript
+App Router
+Tailwind CSS
+shadcn/ui or similarly clean component system
+PostgreSQL
+Prisma ORM OR another reliable type-safe PostgreSQL ORM
+Vercel for deployment
+API Routes / Route Handlers and/or Server Actions
+Zod for server-side input validation
+Recharts or another lightweight chart library for dashboard charts
+
+Recommended architecture:
+Frontend:
+Next.js + React + TypeScript + Tailwind
+Backend:
+Next.js Server Actions / Route Handlers
+Database:
+PostgreSQL
+ORM:
+Prisma
+Hosting:
+Vercel
+The application must use environment variables for database credentials.
+Do NOT store application data in localStorage as the primary database.
+localStorage may only be used for minor UI preferences such as theme or recently selected filters.
+
+3. Main Application Structure
+Create these main pages:
+/
+Dashboard
+/items
+All Items
+/items/new
+Add Item
+/items/[id]
+Item Details
+/items/[id]/edit
+Edit Item
+/categories
+Categories
+/price-history
+Price History
+/settings
+Settings
+Optional future page:
+/suppliers
+Suppliers
+
+4. Navigation
+Use a responsive navigation system.
+Desktop:
+Sidebar navigation:
+
+Dashboard
+Items
+Categories
+Price History
+Settings
+
+Mobile:
+Use a bottom navigation bar or compact mobile menu.
+The navigation should remain easy to use with one hand.
+The current page should be visually highlighted.
+
+5. Dashboard
+The dashboard is the main home page.
+It should provide a quick overview of the shop price database.
+Dashboard KPI cards
+Show:
+Total Items
+Example:
+428 Items
+Categories
+Example:
+12 Categories
+Updated Today
+Example:
+18 Items
+Recently Added
+Example:
+7 Items
+Optional:
+Price Changes
+Number of price changes during the last 7 days.
+
+6. Dashboard — Recent Updates
+Show a section:
+Recently Updated Items
+Example:
+
+
+
+Item
+Category
+Cost
+Retailer
+Customer
+Updated
+
+
+
+
+Bearing 6203
+Bearings
+₹92
+₹120
+₹150
+Today
+
+
+Capacitor 36µF
+Electrical
+₹110
+₹150
+₹180
+Today
+
+
+Copper Wire
+Motor Parts
+₹850
+₹1000
+₹1150
+Yesterday
+
+
+
+On mobile, convert these rows into cards.
+Clicking an item should open its Item Details page.
+
+7. Dashboard — Price Changes
+Show a section:
+Recent Price Changes
+Example:
+Bearing 6203
+Cost:
+₹90 → ₹92
+Changed:
+Today, 10:35 AM
+Another:
+Capacitor 36µF
+Cost:
+₹105 → ₹110
+Changed:
+Today, 9:20 AM
+Clicking a change should open the relevant item's history.
+
+8. Dashboard — Category Overview
+Show category cards:
+
+Motor Parts — 124
+Bearings — 45
+Electrical — 87
+Pump Parts — 76
+Tools — 32
+
+Clicking a category should open /items?category=<categoryId>.
+
+9. Dashboard — Price Statistics
+Create useful charts.
+Possible charts:
+Items by Category
+Pie/donut chart.
+Price Changes Over Time
+Line chart showing number of price changes per day.
+Example:
+Last 7 days:
+Monday — 4
+Tuesday — 7
+Wednesday — 3
+Thursday — 12
+Recently Increased Prices
+Show items where cost price increased recently.
+Example:
+Bearing 6203
+₹90 → ₹92
++₹2
+Capacitor
+₹105 → ₹110
++₹5
+
+10. Items Page
+URL:
+/items
+This is the main price-book page.
+At the top:
+
+Search box
+Category filter
+Sort dropdown
+Add Item button
+
+Search should be extremely fast.
+Search by:
+
+Item name
+Item code
+Brand
+Category
+Model number
+
+Example:
+Searching:
+6203
+could return:
+
+Bearing 6203
+Bearing 6203 ZZ
+Bearing 6203 2RS
+
+
+11. Items Table — Desktop
+Desktop layout:
+
+
+
+Item
+Category
+Cost
+Retailer
+Customer
+Retailer Profit
+Customer Profit
+Updated
+Actions
+
+
+
+Example:
+Bearing 6203
+Bearings
+₹92
+₹120
+₹150
+₹28
+₹58
+Today
+Actions:
+
+View
+Edit
+Delete
+
+
+12. Items Layout — Mobile
+Do NOT force a huge horizontal table on mobile.
+Use cards.
+Example:
+Bearing 6203
+Bearings
+Cost: ₹92
+Retailer: ₹120
+Profit: ₹28
+Customer: ₹150
+Profit: ₹58
+Updated: Today
+[View] [Edit]
+The interface must work comfortably on a phone screen.
+
+13. Item Data
+Every item should support:
+
+ID
+Item name
+Item code
+Category
+Brand
+Model number
+Supplier
+Cost price
+Retailer selling price
+Customer selling price
+Unit
+Notes
+Active/inactive status
+Created date
+Updated date
+
+Optional future fields:
+
+Stock quantity
+Minimum stock
+Location
+Barcode
+Image
+
+Do not make stock management mandatory in V1.
+
+14. Three Prices
+Every item has exactly three primary prices:
+1. Cost Price
+How much the item costs me.
+Example:
+₹90
+2. Retailer Price
+How much I want to sell to another retailer.
+Example:
+₹120
+3. Customer Price
+How much I want to sell directly to the final customer.
+Example:
+₹150
+
+15. Automatic Profit Calculation
+Do NOT store calculated profit as the main source of truth.
+Calculate it from prices.
+Retailer profit:
+retailerPrice - costPrice
+Customer profit:
+customerPrice - costPrice
+Example:
+Cost:
+₹90
+Retailer:
+₹120
+Customer:
+₹150
+Results:
+Retailer profit = ₹30
+Customer profit = ₹60
+
+16. Profit Percentage
+Display profit percentage consistently.
+Prefer showing markup percentage:
+Retailer markup:
+((retailerPrice - costPrice) / costPrice) × 100
+Customer markup:
+((customerPrice - costPrice) / costPrice) × 100
+Example:
+Cost = ₹100
+Retailer = ₹130
+Retailer markup = 30%
+Customer = ₹160
+Customer markup = 60%
+Clearly label this as "Markup %" so it is not confused with profit margin.
+Handle cost price = 0 safely.
+
+17. Add Item Page
+URL:
+/items/new
+Form:
+Item Name *
+Item Code
+Category *
+Brand
+Model Number
+Supplier
+Cost Price *
+Retailer Price *
+Customer Price *
+Unit
+Notes
+Buttons:
+Cancel
+Save Item
+Validation:
+
+Item name required
+Category required
+Prices cannot be negative
+Prices must be valid numbers
+Cost price required
+Retailer price required
+Customer price required
+
+After successful creation:
+
+Save to PostgreSQL
+Create initial price-history record
+Redirect to item details or items page
+Show success message
+
+
+18. Edit Item
+URL:
+/items/[id]/edit
+The existing values must be loaded from PostgreSQL.
+When changing prices:
+Example:
+Old:
+Cost ₹90
+Retailer ₹120
+Customer ₹150
+New:
+Cost ₹92
+Retailer ₹125
+Customer ₹155
+On Save:
+
+Read current database values.
+Compare old and new prices.
+Update the item.
+Create a price-history record containing the old and new values.
+Record the exact date/time.
+Refresh/revalidate affected pages.
+Show a success message.
+
+This operation should be atomic.
+If updating the item succeeds but writing the history fails, the entire operation should roll back.
+Use a database transaction.
+
+19. PRICE HISTORY — VERY IMPORTANT
+Create a dedicated page:
+/price-history
+This page must contain a permanent historical log of price changes.
+Every price update should create a new record.
+Example:
+Price History
+Bearing 6203
+27 Aug 2026 — 10:35 AM
+Cost:
+₹90 → ₹92
+Retailer:
+₹120 → ₹125
+Customer:
+₹150 → ₹155
+Changed fields:
+
+Cost +₹2
+Retailer +₹5
+Customer +₹5
+
+
+20. History Must Never Be Overwritten
+IMPORTANT:
+When an item's price changes, do NOT simply overwrite the previous price and lose the old value.
+The current item table stores the current prices.
+The price_history table stores every change.
+Example:
+Current:
+Cost = ₹105
+History:
+1 Aug → ₹90
+10 Aug → ₹95
+18 Aug → ₹100
+27 Aug → ₹105
+All historical records remain.
+
+21. Price History Database Fields
+Recommended table:
+price_history
+Fields:
+
+id
+item_id
+old_cost_price
+new_cost_price
+old_retailer_price
+new_retailer_price
+old_customer_price
+new_customer_price
+changed_at
+change_note
+changed_by (future-ready)
+
+Do not delete history when an item is edited.
+
+22. History Page Filters
+The Price History page should support:
+Search by item.
+Filter by:
+
+Category
+Date range
+Price type
+Increase
+Decrease
+
+Examples:
+Show only:
+Cost price increased
+or:
+Customer price changed
+Date filters:
+
+Today
+Last 7 days
+Last 30 days
+Custom range
+
+
+23. History Page Layout
+Desktop:
+
+
+
+Date
+Item
+Cost Change
+Retailer Change
+Customer Change
+Details
+
+
+
+Example:
+27 Aug 2026
+Bearing 6203
+₹90 → ₹92
+₹120 → ₹125
+₹150 → ₹155
+Details button.
+Mobile:
+Use timeline/card format.
+Example:
+Today • 10:35 AM
+Bearing 6203
+Cost:
+₹90 → ₹92
+Retailer:
+₹120 → ₹125
+Customer:
+₹150 → ₹155
+
+24. Item Details Page
+URL:
+/items/[id]
+Display:
+Bearing 6203
+Category:
+Bearings
+Brand:
+ABC
+Current Prices
+Cost
+₹92
+Retailer
+₹125
+Customer
+₹155
+Profit
+Retailer profit:
+₹33
+Customer profit:
+₹63
+Item Information
+Item code
+Brand
+Supplier
+Unit
+Notes
+Price History
+Show recent price changes.
+Button:
+View Full History
+
+25. Item Price History Chart
+On the Item Details page, show an optional chart.
+For example:
+X axis:
+Date
+Y axis:
+Price
+Three lines:
+
+Cost
+Retailer
+Customer
+
+This allows me to visually see how the item's prices changed over time.
+If there are not enough history records, simply show the history list instead.
+
+26. Categories
+Create:
+/categories
+Allow:
+
+Add category
+Edit category
+Delete category if unused
+View category items
+
+Example:
+Bearings
+45 items
+Electrical
+87 items
+Motor Parts
+124 items
+Pump Parts
+76 items
+Prevent deleting a category if items are still assigned to it, unless a safe reassignment workflow exists.
+
+27. Database Schema
+Use PostgreSQL.
+Recommended tables:
+categories
+id
+name
+created_at
+updated_at
+items
+id
+name
+item_code
+category_id
+brand
+model_number
+supplier_id
+cost_price
+retailer_price
+customer_price
+unit
+notes
+is_active
+created_at
+updated_at
+price_history
+id
+item_id
+old_cost_price
+new_cost_price
+old_retailer_price
+new_retailer_price
+old_customer_price
+new_customer_price
+change_note
+changed_at
+suppliers
+id
+name
+phone
+notes
+created_at
+updated_at
+Supplier management can be implemented later.
+
+28. Important Database Rules
+Use proper database indexes.
+Create indexes for:
+
+item name
+item code
+category_id
+updated_at
+price_history item_id
+price_history changed_at
+
+Item codes should be unique if provided.
+Category names should preferably be unique.
+Use numeric/decimal PostgreSQL types for prices.
+DO NOT use floating-point numbers for money.
+Use something equivalent to:
+DECIMAL(12,2)
+for monetary values.
+
+29. API / Backend
+The application must have a real backend.
+Possible API endpoints:
+GET /api/items
+GET /api/items/[id]
+POST /api/items
+PATCH /api/items/[id]
+DELETE /api/items/[id]
+GET /api/categories
+POST /api/categories
+PATCH /api/categories/[id]
+DELETE /api/categories/[id]
+GET /api/price-history
+GET /api/price-history/[itemId]
+GET /api/dashboard
+Use server-side validation.
+Do not trust values coming directly from the browser.
+
+30. Fast Data Updates
+When I edit an item:
+
+Browser sends update to backend.
+Backend validates data.
+Database transaction updates item.
+Database transaction creates price-history record.
+Server revalidates affected pages.
+UI immediately shows the new values.
+
+Pages that may need refreshing/revalidation:
+
+Dashboard
+Items
+Item Details
+Price History
+Categories
+
+I should NOT need to manually redeploy the Vercel project after changing a price.
+IMPORTANT:
+Changing database data is NOT the same as deploying the website.
+Vercel hosts the application code.
+PostgreSQL stores the changing shop data.
+When the database changes, the website should read the latest database values.
+
+31. Navigation Persistence
+Example:
+I am on:
+/items
+I edit Bearing 6203.
+Then I navigate to:
+/price-history
+The new price change must already be there.
+Then I go to:
+/dashboard
+The dashboard must show the latest update.
+Then I go back to:
+/items
+The current price must be updated.
+The database is the single source of truth.
+
+32. Caching / Revalidation
+Be careful with Next.js caching.
+Do not allow stale price data to remain visible after an update.
+After mutations, use appropriate Next.js cache invalidation/revalidation mechanisms.
+For example, revalidate:
+
+/
+/items
+/price-history
+/items/[id]
+
+Or use appropriate dynamic rendering where necessary.
+The priority is correctness of price data over aggressive caching.
+
+33. Search
+Search should feel instant.
+Use a debounced search input.
+For V1, PostgreSQL search is enough.
+Search fields:
+
+name
+item_code
+brand
+model_number
+
+Support partial matching.
+Example:
+Search:
+bearing
+Results:
+Bearing 6203
+Bearing 6204
+Bearing 6205
+Search:
+6203
+Results:
+Bearing 6203
+Bearing 6203 ZZ
+Bearing 6203 2RS
+
+34. Sorting
+Items should support sorting by:
+
+Name A-Z
+Name Z-A
+Recently updated
+Recently added
+Cost price low-high
+Cost price high-low
+Retailer price
+Customer price
+
+
+35. Quick Price Editing
+This is important for daily use.
+Consider allowing quick editing directly from the Items table/card.
+Example:
+Cost ₹90
+Tap/edit.
+Change to:
+₹92
+Save.
+No need to open a huge form.
+However, the normal Edit page should still exist for changing other item information.
+
+36. Confirmation and Safety
+For destructive actions:
+Delete item:
+Show confirmation.
+Example:
+"Delete Bearing 6203?"
+Explain that deleting the item may affect historical records.
+Prefer soft delete:
+is_active = false
+instead of permanently deleting important business data.
+Price history should normally never be deleted automatically.
+
+37. Toast Notifications
+After actions show simple notifications:
+"Item added successfully."
+"Price updated successfully."
+"Category created successfully."
+"Price history saved."
+"Item archived."
+Errors should be clear:
+"Unable to update item. Please try again."
+
+38. Loading States
+Every database operation needs proper loading states.
+Examples:
+Saving...
+Updating price...
+Loading items...
+Loading history...
+Do not make the UI look frozen.
+Use skeleton loaders where appropriate.
+
+39. Error Handling
+Implement:
+
+Database error handling
+Form validation errors
+Not-found pages
+API errors
+Network errors
+Empty states
+
+Example empty state:
+"No items found."
+"Try another search or add a new item."
+
+40. Dashboard Empty State
+If there are no items yet:
+Show:
+"Welcome to your Price Book"
+"Add your first item to get started."
+Button:
++ Add Item
+
+41. Mobile Requirements
+Mobile is a first-class requirement.
+Test at:
+
+320px
+375px
+390px
+414px
+768px
+Desktop
+
+Requirements:
+
+No accidental horizontal overflow
+Buttons easy to tap
+Search easy to access
+Price values clearly visible
+Forms comfortable on mobile
+Navigation easy to use
+Cards instead of oversized tables
+Sticky search/action area where useful
+
+
+42. Desktop Requirements
+On desktop:
+Use the available screen width efficiently.
+Items can use a proper table.
+Dashboard can use multiple cards and charts.
+Sidebar navigation can remain visible.
+
+43. Currency
+Use Indian Rupees.
+Display:
+₹92
+not:
+INR 92
+Use Indian number formatting:
+₹1,250
+₹12,500
+₹1,25,000
+Do not store the currency symbol in the database.
+Store numeric values only.
+
+44. Data Integrity
+This application manages real business prices.
+Therefore:
+
+Never silently lose price history.
+Never overwrite history.
+Never partially update prices.
+Use database transactions for price updates.
+Validate all input.
+Use decimal database fields.
+Keep current prices and history separate.
+Use the database as the source of truth.
+
+
+45. Authentication
+Because this is a private business application, protect it with authentication.
+Initially, a simple single-user login is enough.
+All application pages should require authentication except the login page.
+Do not expose the item prices publicly.
+Do not put database credentials in frontend code.
+Do not expose private API endpoints without authentication.
+
+46. Backup / Export
+Add an Export feature in Settings.
+Allow:
+Export Items CSV
+and:
+Export Price History CSV
+This provides a simple backup.
+Future feature:
+Import CSV.
+
+47. Settings
+Settings page can initially contain:
+
+Shop/app name
+Currency
+Export items
+Export price history
+Theme
+Account/logout
+
+Keep it simple.
+
+48. Performance
+The application should remain fast with at least:
+
+1,000 items
+5,000 items
+10,000+ price-history records
+
+Use pagination for large lists.
+Do not load the entire price-history table into the browser.
+Example:
+20 / 50 / 100 records per page
+Use server-side filtering and pagination.
+
+49. Dashboard Queries
+Dashboard data should be calculated from PostgreSQL.
+Examples:
+Total items:
+COUNT(items)
+Total categories:
+COUNT(categories)
+Updated today:
+COUNT(items WHERE updated_at >= today)
+Recent history:
+ORDER BY changed_at DESC
+Do not calculate large dashboard datasets entirely in the browser.
+
+50. Price History Logic
+When creating an item:
+Create an initial history record.
+Example:
+Action:
+INITIAL_PRICE
+Old:
+null
+New:
+Cost ₹90
+Retailer ₹120
+Customer ₹150
+When editing:
+Only create a history record if at least one price actually changed.
+If only the item's notes or brand changed, do NOT create a price-change history record.
+If only cost changed:
+Store:
+Old Cost: ₹90
+New Cost: ₹95
+Retailer old/new can remain the same.
+Customer old/new can remain the same.
+
+51. Change Type
+Add a useful field:
+change_type
+Possible values:
+
+INITIAL
+PRICE_UPDATE
+ITEM_EDIT
+IMPORT
+
+For price-history display, primarily show PRICE_UPDATE and INITIAL.
+
+52. Change Note
+When changing prices, optionally allow:
+"Supplier increased price."
+"New supplier rate."
+"Market price changed."
+"Manual correction."
+This is useful later when reviewing history.
+
+53. Example Real Workflow
+Suppose I receive a supplier message:
+"6203 bearing = ₹92"
+I open the website.
+Search:
+6203
+Open:
+Bearing 6203
+Current:
+Cost ₹90
+Retailer ₹120
+Customer ₹150
+Tap Edit.
+Change:
+Cost ₹92
+Save.
+System automatically:
+
+Updates current cost to ₹92.
+Keeps retailer at ₹120.
+Keeps customer at ₹150.
+Creates history:
+₹90 → ₹92.
+Records current date/time.
+Updates Dashboard.
+Updates Items page.
+Updates Item Details.
+Updates Price History.
+
+I do NOT need to manually update any other page.
+
+54. Another Example
+Current:
+Cost ₹100
+Retailer ₹130
+Customer ₹160
+Supplier changes cost to ₹110.
+I decide:
+Cost = ₹110
+Retailer = ₹140
+Customer = ₹170
+Save.
+History should record:
+Cost:
+₹100 → ₹110
+Retailer:
+₹130 → ₹140
+Customer:
+₹160 → ₹170
+Profit automatically becomes:
+Retailer:
+₹30
+Customer:
+₹60
+No manual calculation.
+
+55. UI Design
+The design should be:
+
+Clean
+Professional
+Simple
+Fast
+Mobile-first
+Not overly colorful
+Easy to read in a shop environment
+
+Use cards, tables, badges, dialogs, tabs and clean forms.
+Avoid unnecessary animations.
+Prioritize usability over fancy visual effects.
+
+56. Recommended Color Meaning
+Use consistent semantic colors.
+Cost price:
+Neutral
+Retailer price:
+One accent
+Customer price:
+Another accent
+Profit:
+Positive/success styling
+Price increase:
+Warning/red-ish semantic styling
+Price decrease:
+Positive/green-ish semantic styling
+Do not rely only on color; also use text/icons so the UI remains understandable.
+
+57. Component Structure
+Create reusable components.
+Examples:
+ItemCard
+ItemTable
+PriceDisplay
+ProfitDisplay
+SearchBar
+CategoryFilter
+PriceHistoryCard
+PriceHistoryTable
+DashboardCard
+PriceChart
+AddItemForm
+EditItemForm
+DeleteConfirmation
+MobileNavigation
+Sidebar
+Avoid duplicating UI logic.
+
+58. Backend Structure
+Keep database code separate from UI.
+Example conceptual structure:
+lib/db
+Database connection.
+lib/queries
+Database queries.
+lib/validation
+Zod schemas.
+app/api
+API routes.
+components
+Reusable UI.
+app/(dashboard)
+Protected application pages.
+
+59. Security
+Never expose:
+
+DATABASE_URL
+Database password
+Authentication secrets
+Private API keys
+
+Use Vercel environment variables.
+Validate authentication on the server.
+Validate authorization on the server.
+Never assume hiding a frontend button is security.
+
+60. Deployment
+Deploy on Vercel.
+Connect the project to GitHub.
+Configure:
+DATABASE_URL
+and authentication secrets in Vercel Environment Variables.
+Use PostgreSQL for persistent storage.
+Do not use an in-memory array for production data.
+Do not use local JSON files as the database.
+Do not depend on the Vercel server filesystem for persistent application data.
+
+61. Important Vercel Behavior
+Understand this clearly:
+Vercel deployment contains the application code.
+PostgreSQL contains the changing shop data.
+For example:
+I deploy the app once.
+Then I change:
+Bearing 6203:
+₹90 → ₹92
+I should NOT need to redeploy Vercel.
+The database changes.
+The application reads the new value.
+All pages show the new value.
+This is a critical requirement.
+
+62. API Behavior
+All APIs should return structured JSON where appropriate.
+Example:
+GET /api/items
+returns item data.
+POST /api/items
+creates an item.
+PATCH /api/items/123
+updates item 123.
+GET /api/price-history
+returns paginated history.
+GET /api/dashboard
+returns dashboard statistics.
+Use appropriate HTTP status codes.
+
+63. Pagination
+Items:
+Default 25 or 50 per page.
+Price history:
+Default 50 per page.
+API should support:
+page
+limit
+search
+category
+from
+to
+sort
+Example conceptual request:
+/api/price-history?page=1&limit=50
+
+64. Future-Proofing
+Do not overbuild V1.
+But structure the database so these can be added later:
+
+Stock management
+Purchase records
+Sales records
+Suppliers
+Customer management
+Retailer management
+Barcode scanning
+Invoice generation
+WhatsApp sharing
+Excel import
+Excel export
+Multiple users
+Audit logs
+Cloud backups
+
+Do not implement all of these now.
+
+65. V1 Priority
+The most important features are:
+
+Authentication
+PostgreSQL database
+Dashboard
+Items
+Categories
+Search
+Add item
+Edit item
+Three prices
+Automatic profit
+Price history
+Mobile responsive UI
+Proper database persistence
+Fast navigation
+Vercel deployment
+
+Everything else is secondary.
+
+66. Acceptance Tests
+Before considering the application complete, test these scenarios.
+Test 1 — Add item
+Create:
+Bearing 6203
+Cost ₹90
+Retailer ₹120
+Customer ₹150
+Verify:
+Item appears in Items.
+Dashboard count increases.
+Initial history exists.
+
+Test 2 — Update price
+Change:
+Cost ₹90 → ₹92
+Verify:
+Current item shows ₹92.
+History shows:
+₹90 → ₹92.
+Dashboard shows recent update.
+
+Test 3 — Multiple price update
+Change:
+Cost ₹92 → ₹95
+Retailer ₹120 → ₹125
+Customer ₹150 → ₹160
+Verify all three changes are recorded.
+
+Test 4 — Navigation
+Update item.
+Go to:
+Dashboard
+Items
+Item Details
+Price History
+Verify all pages show the latest database state.
+
+Test 5 — Refresh
+Update an item.
+Refresh browser.
+Verify the new value remains.
+
+Test 6 — Close browser
+Update item.
+Close browser.
+Open website again.
+Verify data remains.
+
+Test 7 — Mobile
+Test on an actual Android phone.
+Verify:
+
+Search works
+Add item works
+Edit works
+Price history works
+Dashboard works
+No horizontal overflow
+Buttons are easy to tap
+
+
+Test 8 — History preservation
+Change:
+₹90 → ₹92
+Then:
+₹92 → ₹95
+Then:
+₹95 → ₹100
+History must show all three changes.
+Nothing should be overwritten.
+
+67. Final Development Instruction
+Build this as a production-quality personal business application, not a demo.
+Do not use fake/static data after the database is connected.
+Do not implement the price history only in frontend state.
+Do not use localStorage as the main database.
+Do not require a Vercel redeployment when prices change.
+All persistent business data must live in PostgreSQL.
+Use database transactions for price updates and history creation.
+Use proper validation, authentication, error handling, loading states and responsive UI.
+The final application should feel like a simple personal "Price Book + Price History" system designed specifically for a submersible pump repair shop.
+The primary goal is:
+Open → Search item → See 3 prices → See profit → Quickly update price → Automatically preserve complete history.

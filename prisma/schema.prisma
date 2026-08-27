@@ -1,0 +1,70 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  items     Item[]
+
+  @@map("categories")
+}
+
+model Item {
+  id            String         @id @default(cuid())
+  name          String
+  itemCode      String?        @map("item_code")
+  categoryId    String         @map("category_id")
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  brand         String?
+  modelNumber   String?        @map("model_number")
+  costPrice     Decimal        @map("cost_price") @db.Decimal(12, 2)
+  retailerPrice Decimal        @map("retailer_price") @db.Decimal(12, 2)
+  customerPrice Decimal        @map("customer_price") @db.Decimal(12, 2)
+  unit          String?        @default("pcs")
+  notes         String?
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  priceHistories PriceHistory[]
+
+  @@index([name])
+  @@index([itemCode])
+  @@index([categoryId])
+  @@index([updatedAt])
+  @@map("items")
+}
+
+model PriceHistory {
+  id               String   @id @default(cuid())
+  itemId           String   @map("item_id")
+  item             Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  oldCostPrice     Decimal  @map("old_cost_price") @db.Decimal(12, 2)
+  newCostPrice     Decimal  @map("new_cost_price") @db.Decimal(12, 2)
+  oldRetailerPrice Decimal  @map("old_retailer_price") @db.Decimal(12, 2)
+  newRetailerPrice Decimal  @map("new_retailer_price") @db.Decimal(12, 2)
+  oldCustomerPrice Decimal  @map("old_customer_price") @db.Decimal(12, 2)
+  newCustomerPrice Decimal  @map("new_customer_price") @db.Decimal(12, 2)
+  changeNote       String?  @map("change_note")
+  changedAt        DateTime @default(now()) @map("changed_at")
+
+  @@index([itemId])
+  @@index([changedAt])
+  @@map("price_history")
+}
+
+model SystemSettings {
+  id        String   @id @default("settings")
+  pinHash   String   @map("pin_hash")
+  themeMode String   @default("dark") @map("theme_mode")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
