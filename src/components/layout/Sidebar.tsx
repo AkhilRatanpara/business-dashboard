@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, FolderTree, History, Settings, PlusCircle, Wrench, Lock, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, History, Settings, PlusCircle, Wrench, Lock, Sun, Moon, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/theme/ThemeProvider';
 
@@ -11,6 +11,7 @@ const navItems = [
   { name: 'Items (Price Book)', href: '/items', icon: Package },
   { name: 'Categories', href: '/categories', icon: FolderTree },
   { name: 'Price History', href: '/price-history', icon: History },
+  { name: 'Activity History', href: '/price-history?tab=activity', icon: RotateCcw },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

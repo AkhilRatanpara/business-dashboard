@@ -7,8 +7,17 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
+        parent: true,
+        children: {
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          include: {
+            _count: {
+              select: { items: true },
+            },
+          },
+        },
         _count: {
           select: { items: true },
         },
@@ -24,23 +33,34 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name } = await req.json();
+    const { name, parentId } = await req.json();
     const cleanName = name?.trim();
+    const cleanParentId = parentId?.trim() || null;
 
     if (!cleanName) {
       return NextResponse.json({ success: false, message: 'Category name is required' }, { status: 400 });
     }
 
     const existing = await prisma.category.findFirst({
-      where: { name: { equals: cleanName, mode: 'insensitive' } },
+      where: {
+        name: { equals: cleanName, mode: 'insensitive' },
+        parentId: cleanParentId,
+      },
     });
 
     if (existing) {
-      return NextResponse.json({ success: false, message: 'Category with this name already exists' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Category/Subcategory with this name already exists here' }, { status: 400 });
     }
 
     const category = await prisma.category.create({
-      data: { name: cleanName },
+      data: {
+        name: cleanName,
+        parentId: cleanParentId,
+      },
+      include: {
+        parent: true,
+        children: true,
+      },
     });
 
     return NextResponse.json({ success: true, category });

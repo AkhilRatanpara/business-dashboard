@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, CheckCircle2, ShieldCheck, Sun, Moon, Database, Key } from 'lucide-react';
+import Link from 'next/link';
+import { Lock, CheckCircle2, ShieldCheck, Sun, Moon, Database, Key, RotateCcw } from 'lucide-react';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { notify } from '@/components/ui/Toast';
 
@@ -163,6 +164,28 @@ export default function SettingsPage() {
           >
             Switch to {theme === 'dark' ? 'White Light Mode' : 'Dark Mode'}
           </button>
+        </div>
+      </div>
+
+      {/* Activity History & Backtrack Recovery Card */}
+      <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
+              <RotateCcw className="w-5 h-5 animate-spin-reverse" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-slate-100">Activity History</h2>
+              <p className="text-xs text-slate-500">Recover deleted items or rollback changes from the last 7 days</p>
+            </div>
+          </div>
+
+          <Link
+            href="/history"
+            className="px-4 py-2 rounded-xl bg-amber-600 text-slate-950 font-bold hover:bg-amber-500 text-xs transition-all border border-amber-500 shadow-md shadow-amber-500/10"
+          >
+            Manage Backtrack
+          </Link>
         </div>
       </div>
 

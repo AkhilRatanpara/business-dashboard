@@ -8,12 +8,18 @@ generator client {
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String     @id @default(cuid())
+  name      String
+  sortOrder Int        @default(0) @map("sort_order")
+  sourcePage Int?      @map("source_page")
+  parentId  String?    @map("parent_id")
+  parent    Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Category[] @relation("SubCategories")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
   items     Item[]
 
+  @@unique([parentId, name])
   @@map("categories")
 }
 
@@ -30,6 +36,11 @@ model Item {
   customerPrice Decimal        @map("customer_price") @db.Decimal(12, 2)
   unit          String?        @default("pcs")
   notes         String?
+  catalogGroup  String?        @map("catalog_group")
+  catalogSrNo   Int?           @map("catalog_sr_no")
+  variantSrNo   Int?           @map("variant_sr_no")
+  sortOrder     Int            @default(0) @map("sort_order")
+  sourcePage    Int?           @map("source_page")
   isActive      Boolean        @default(true) @map("is_active")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
@@ -39,6 +50,8 @@ model Item {
   @@index([itemCode])
   @@index([categoryId])
   @@index([updatedAt])
+  @@index([catalogGroup])
+  @@index([categoryId, sortOrder])
   @@map("items")
 }
 
@@ -67,4 +80,18 @@ model SystemSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actionType  String   // "CREATE", "UPDATE", "DELETE"
+  entityType  String   // "ITEM", "CATEGORY"
+  entityId    String
+  entityName  String
+  oldData     Json?
+  newData     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("audit_logs")
 }

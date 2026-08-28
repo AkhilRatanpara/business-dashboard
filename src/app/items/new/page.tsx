@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, PlusCircle, Plus, Check, X, FolderTree } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Plus, Check, X, FolderTree, Tag } from 'lucide-react';
 import { notify } from '@/components/ui/Toast';
 
 interface Category {
   id: string;
   name: string;
+  parentId?: string | null;
 }
 
 export default function NewItemPage() {
@@ -17,16 +18,24 @@ export default function NewItemPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingCats, setFetchingCats] = useState(true);
 
+  // Parent & Subcategory selections
+  const [selectedParentId, setSelectedParentId] = useState('');
+  const [selectedSubId, setSelectedSubId] = useState('');
+
   // Inline Category Creation State
-  const [showAddCatModal, setShowAddCatModal] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [addingCat, setAddingCat] = useState(false);
+  const [showAddParentModal, setShowAddParentModal] = useState(false);
+  const [newParentName, setNewParentName] = useState('');
+  const [addingParent, setAddingParent] = useState(false);
+
+  // Inline Subcategory Creation State
+  const [showAddSubModal, setShowAddSubModal] = useState(false);
+  const [newSubName, setNewSubName] = useState('');
+  const [addingSub, setAddingSub] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     name: '',
     itemCode: '',
-    categoryId: '',
     brand: '',
     modelNumber: '',
     costPrice: '',
@@ -34,19 +43,40 @@ export default function NewItemPage() {
     customerPrice: '',
     unit: 'pcs',
     notes: '',
+    catalogSrNo: '',
+    variantSrNo: '',
+    catalogGroup: '',
+    sourcePage: '',
   });
 
-  const fetchCategories = async (selectCatId?: string) => {
+  const fetchCategories = async (selectParentId?: string, selectSubId?: string) => {
     setFetchingCats(true);
     try {
       const res = await fetch('/api/categories');
       const data = await res.json();
       if (data.success) {
         setCategories(data.categories);
-        if (selectCatId) {
-          setFormData((prev) => ({ ...prev, categoryId: selectCatId }));
-        } else if (data.categories.length > 0 && !formData.categoryId) {
-          setFormData((prev) => ({ ...prev, categoryId: data.categories[0].id }));
+
+        // Compute parents
+        const parents = data.categories.filter((c: Category) => !c.parentId);
+        
+        if (selectParentId) {
+          setSelectedParentId(selectParentId);
+          if (selectSubId) {
+            setSelectedSubId(selectSubId);
+          } else {
+            // Find first sub of selectParentId if any
+            const subs = data.categories.filter((c: Category) => c.parentId === selectParentId);
+            setSelectedSubId(subs.length > 0 ? subs[0].id : '');
+          }
+        } else {
+          // Default selection
+          if (parents.length > 0 && !selectedParentId) {
+            const firstParent = parents[0].id;
+            setSelectedParentId(firstParent);
+            const subs = data.categories.filter((c: Category) => c.parentId === firstParent);
+            setSelectedSubId(subs.length > 0 ? subs[0].id : '');
+          }
         }
       }
     } catch (err) {
@@ -60,38 +90,75 @@ export default function NewItemPage() {
     fetchCategories();
   }, []);
 
-  const handleCreateInlineCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCatName.trim()) return;
+  // When parent selection changes, auto update subcategory selection
+  const handleParentChange = (parentId: string) => {
+    setSelectedParentId(parentId);
+    const subs = categories.filter((c) => c.parentId === parentId);
+    setSelectedSubId(subs.length > 0 ? subs[0].id : '');
+  };
 
-    setAddingCat(true);
+  const handleCreateParent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newParentName.trim()) return;
+
+    setAddingParent(true);
     try {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCatName.trim() }),
+        body: JSON.stringify({ name: newParentName.trim() }),
       });
       const data = await res.json();
 
       if (data.success) {
-        notify(`Created category "${newCatName.trim()}" in Neon DB`, 'success');
-        setNewCatName('');
-        setShowAddCatModal(false);
+        notify(`Created main category "${newParentName.trim()}"`, 'success');
+        setNewParentName('');
+        setShowAddParentModal(false);
         await fetchCategories(data.category.id);
       } else {
-        alert(data.message || 'Failed to add category');
+        alert(data.message || 'Failed to add parent category');
       }
     } catch (err) {
-      alert('Error creating category');
+      alert('Error creating parent category');
     } finally {
-      setAddingCat(false);
+      setAddingParent(false);
+    }
+  };
+
+  const handleCreateSub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubName.trim() || !selectedParentId) return;
+
+    setAddingSub(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newSubName.trim(), parentId: selectedParentId }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        notify(`Created subcategory "${newSubName.trim()}"`, 'success');
+        setNewSubName('');
+        setShowAddSubModal(false);
+        await fetchCategories(selectedParentId, data.category.id);
+      } else {
+        alert(data.message || 'Failed to add subcategory');
+      }
+    } catch (err) {
+      alert('Error creating subcategory');
+    } finally {
+      setAddingSub(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.categoryId || !formData.costPrice) {
-      alert('Please fill in required fields (Name, Category, Cost Price)');
+    const finalCategoryId = selectedSubId || selectedParentId;
+
+    if (!formData.name || !finalCategoryId || !formData.costPrice) {
+      alert('Please fill in required fields (Name, Category/Subcategory, Cost Price)');
       return;
     }
 
@@ -103,7 +170,7 @@ export default function NewItemPage() {
         body: JSON.stringify({
           name: formData.name.trim(),
           itemCode: formData.itemCode.trim() || undefined,
-          categoryId: formData.categoryId,
+          categoryId: finalCategoryId,
           brand: formData.brand.trim() || undefined,
           modelNumber: formData.modelNumber.trim() || undefined,
           costPrice: parseFloat(formData.costPrice),
@@ -111,13 +178,17 @@ export default function NewItemPage() {
           customerPrice: parseFloat(formData.customerPrice || formData.costPrice),
           unit: formData.unit.trim() || 'pcs',
           notes: formData.notes.trim() || undefined,
+          catalogSrNo: formData.catalogSrNo ? parseInt(formData.catalogSrNo) : undefined,
+          variantSrNo: formData.variantSrNo ? parseInt(formData.variantSrNo) : undefined,
+          catalogGroup: formData.catalogGroup.trim() || undefined,
+          sourcePage: formData.sourcePage ? parseInt(formData.sourcePage) : undefined,
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        notify(`Added "${formData.name.trim()}" to Neon DB`, 'success');
+        notify(`Added "${formData.name.trim()}" successfully`, 'success');
         router.push('/items');
       } else {
         alert(data.message || 'Failed to create item');
@@ -142,8 +213,11 @@ export default function NewItemPage() {
     });
   };
 
+  const parentCategories = categories.filter((c) => !c.parentId);
+  const subCategories = categories.filter((c) => c.parentId === selectedParentId);
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto pb-16">
       {/* Header Bar */}
       <div className="flex items-center gap-3">
         <Link
@@ -156,11 +230,11 @@ export default function NewItemPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
             Add New Item
           </h1>
-          <p className="text-xs text-slate-500 font-medium">Add submersible pump repair part to Neon DB</p>
+          <p className="text-xs text-slate-500 font-medium">Add a submersible pump repair part with category hierarchy</p>
         </div>
       </div>
 
-      {/* Craft.Lab Pure White Form */}
+      {/* Form Card */}
       <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 space-y-4">
         {/* Item Name */}
         <div>
@@ -169,7 +243,7 @@ export default function NewItemPage() {
           </label>
           <input
             type="text"
-            placeholder="e.g. Mechanical Seal 25mm Kirloskar"
+            placeholder="e.g. Rotor 1.5 HP V-3 Submersible"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -177,40 +251,78 @@ export default function NewItemPage() {
           />
         </div>
 
-        {/* Category Selection + Inline "+ New Category" Button for Mobile & Desktop */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200">
-              Category <span className="text-rose-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowAddCatModal(true)}
-              className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-500/20"
+        {/* Category & Subcategory selection grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Parent Category Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                Main Category <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddParentModal(true)}
+                className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20"
+              >
+                <Plus className="w-3 h-3" /> Add Main
+              </button>
+            </div>
+
+            <select
+              value={selectedParentId}
+              onChange={(e) => handleParentChange(e.target.value)}
+              required
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-emerald-500"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Category</span>
-            </button>
+              {fetchingCats ? (
+                <option value="">Loading categories...</option>
+              ) : parentCategories.length === 0 ? (
+                <option value="">No categories found. Add one!</option>
+              ) : (
+                parentCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
-          <select
-            value={formData.categoryId}
-            onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-            required
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-emerald-500"
-          >
-            {fetchingCats ? (
-              <option value="">Loading categories...</option>
-            ) : categories.length === 0 ? (
-              <option value="">No categories found. Add one!</option>
-            ) : (
-              categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))
-            )}
-          </select>
+          {/* Subcategory Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                Subcategory
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddSubModal(true)}
+                disabled={!selectedParentId}
+                className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/20 disabled:opacity-55"
+              >
+                <Plus className="w-3 h-3" /> Add Sub
+              </button>
+            </div>
+
+            <select
+              value={selectedSubId}
+              onChange={(e) => setSelectedSubId(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-emerald-500"
+            >
+              {subCategories.length === 0 ? (
+                <option value="">No subcategories (Direct Category Item)</option>
+              ) : (
+                <>
+                  <option value="">None (Link directly to Main Category)</option>
+                  {subCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+          </div>
         </div>
 
         {/* Code & Brand */}
@@ -229,10 +341,57 @@ export default function NewItemPage() {
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Brand / Make</label>
             <input
               type="text"
-              placeholder="e.g. Kirloskar / Texmo"
+              placeholder="e.g. SKF / Kirloskar"
               value={formData.brand}
               onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* Catalog Ordering & Group Fields */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="col-span-2 sm:col-span-4 mb-1">
+            <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100 uppercase tracking-wider">PDF Catalog Info (Optional)</span>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catalog Sr No</label>
+            <input
+              type="number"
+              placeholder="e.g. 12"
+              value={formData.catalogSrNo}
+              onChange={(e) => setFormData({ ...formData, catalogSrNo: e.target.value })}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Variant Sr No</label>
+            <input
+              type="number"
+              placeholder="e.g. 1"
+              value={formData.variantSrNo}
+              onChange={(e) => setFormData({ ...formData, variantSrNo: e.target.value })}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catalog Group</label>
+            <input
+              type="text"
+              placeholder="e.g. V-4 SUCTION"
+              value={formData.catalogGroup}
+              onChange={(e) => setFormData({ ...formData, catalogGroup: e.target.value })}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Source Page</label>
+            <input
+              type="number"
+              placeholder="e.g. 2"
+              value={formData.sourcePage}
+              onChange={(e) => setFormData({ ...formData, sourcePage: e.target.value })}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none"
             />
           </div>
         </div>
@@ -336,50 +495,102 @@ export default function NewItemPage() {
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>{loading ? 'Saving to Neon DB...' : 'Save Item'}</span>
+            <span>{loading ? 'Saving to Database...' : 'Save Item'}</span>
           </button>
         </div>
       </form>
 
-      {/* Inline Add Category Modal */}
-      {showAddCatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+      {/* Inline Add Parent Category Modal */}
+      {showAddParentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
               <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
-                <FolderTree className="w-4 h-4 text-emerald-600" />
-                <span>Create New Category</span>
+                <FolderTree className="w-4.5 h-4.5 text-emerald-600" />
+                <span>Create Main Category</span>
               </h3>
-              <button onClick={() => setShowAddCatModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
+              <button onClick={() => setShowAddParentModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateInlineCategory} className="space-y-3">
+            <form onSubmit={handleCreateParent} className="space-y-3.5">
               <input
                 type="text"
-                placeholder="Category Name (e.g. Impellers & Diffusers)"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="Category Name (e.g. V-3 C.I. Submersible parts)"
+                value={newParentName}
+                onChange={(e) => setNewParentName(e.target.value)}
                 required
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:border-emerald-500"
               />
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddCatModal(false)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 text-xs font-bold"
+                  onClick={() => setShowAddParentModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 text-xs font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={addingCat || !newCatName.trim()}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md flex items-center gap-1 disabled:opacity-50"
+                  disabled={addingParent || !newParentName.trim()}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md flex items-center gap-1"
                 >
                   <Check className="w-4 h-4" />
-                  <span>{addingCat ? 'Creating...' : 'Create & Select'}</span>
+                  <span>{addingParent ? 'Creating...' : 'Create & Select'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Inline Add Subcategory Modal */}
+      {showAddSubModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
+              <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
+                <Tag className="w-4.5 h-4.5 text-emerald-600" />
+                <span>Create Subcategory</span>
+              </h3>
+              <button onClick={() => setShowAddSubModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSub} className="space-y-3.5">
+              <div className="bg-slate-100 dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                <span className="text-slate-400 font-semibold">Under Parent:</span>{' '}
+                <strong className="text-slate-800 dark:text-slate-100 font-bold">
+                  {parentCategories.find((c) => c.id === selectedParentId)?.name}
+                </strong>
+              </div>
+              <input
+                type="text"
+                placeholder="Subcategory Name (e.g. Sr. No. 1 - Rotor)"
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+                required
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-bold focus:outline-none focus:border-emerald-500"
+              />
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSubModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingSub || !newSubName.trim()}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md flex items-center gap-1"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{addingSub ? 'Creating...' : 'Create & Select'}</span>
                 </button>
               </div>
             </form>

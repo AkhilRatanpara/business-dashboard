@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, PlusCircle, History, Settings } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, History, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const mobileNavItems = [
   { name: 'Home', href: '/', icon: LayoutDashboard },
   { name: 'Items', href: '/items', icon: Package },
-  { name: 'Add', href: '/items/new', icon: PlusCircle, isHighlight: true },
+  { name: 'Categories', href: '/categories', icon: FolderTree, isHighlight: true },
   { name: 'History', href: '/price-history', icon: History },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

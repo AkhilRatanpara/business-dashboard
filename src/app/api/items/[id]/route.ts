@@ -10,7 +10,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     const item = await prisma.item.findUnique({
       where: { id: params.id },
       include: {
-        category: true,
+        category: {
+          include: {
+            parent: true,
+          },
+        },
         priceHistories: {
           orderBy: { changedAt: 'desc' },
         },
@@ -60,6 +64,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await req.json();
     const existingItem = await prisma.item.findUnique({
       where: { id: params.id },
+      include: {
+        category: true,
+      },
     });
 
     if (!existingItem) {
@@ -76,8 +83,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const pricesChanged = oldCost !== newCost || oldRetailer !== newRetailer || oldCustomer !== newCustomer;
 
+    const oldItemForLog = {
+      id: existingItem.id,
+      name: existingItem.name,
+      itemCode: existingItem.itemCode,
+      brand: existingItem.brand,
+      modelNumber: existingItem.modelNumber,
+      costPrice: oldCost,
+      retailerPrice: oldRetailer,
+      customerPrice: oldCustomer,
+      unit: existingItem.unit,
+      notes: existingItem.notes,
+      categoryId: existingItem.categoryId,
+      categoryName: existingItem.category?.name,
+      categoryParentId: existingItem.category?.parentId,
+    };
+
     // Atomic update in Neon PostgreSQL
     const updatedItem = await prisma.$transaction(async (tx) => {
+      const catSrNoVal = body.catalogSrNo !== undefined ? (body.catalogSrNo !== '' ? parseInt(body.catalogSrNo) : null) : existingItem.catalogSrNo;
+      const varSrNoVal = body.variantSrNo !== undefined ? (body.variantSrNo !== '' ? parseInt(body.variantSrNo) : null) : existingItem.variantSrNo;
+      const srcPageVal = body.sourcePage !== undefined ? (body.sourcePage !== '' ? parseInt(body.sourcePage) : null) : existingItem.sourcePage;
+
       const updated = await tx.item.update({
         where: { id: params.id },
         data: {
@@ -91,9 +118,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           customerPrice: newCustomer,
           unit: body.unit !== undefined ? (body.unit?.trim() || 'pcs') : existingItem.unit,
           notes: body.notes !== undefined ? (body.notes?.trim() || null) : existingItem.notes,
+          catalogSrNo: isNaN(Number(catSrNoVal)) ? null : catSrNoVal,
+          variantSrNo: isNaN(Number(varSrNoVal)) ? null : varSrNoVal,
+          catalogGroup: body.catalogGroup !== undefined ? (body.catalogGroup?.trim() || null) : existingItem.catalogGroup,
+          sourcePage: isNaN(Number(srcPageVal)) ? null : srcPageVal,
         },
         include: {
-          category: true,
+          category: {
+            include: {
+              parent: true,
+            },
+          },
         },
       });
 
@@ -112,6 +147,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         });
       }
 
+      await tx.auditLog.create({
+        data: {
+          actionType: 'UPDATE',
+          entityType: 'ITEM',
+          entityId: updated.id,
+          entityName: updated.name,
+          oldData: oldItemForLog as any,
+          newData: {
+            id: updated.id,
+            name: updated.name,
+            itemCode: updated.itemCode,
+            brand: updated.brand,
+            modelNumber: updated.modelNumber,
+            costPrice: newCost,
+            retailerPrice: newRetailer,
+            customerPrice: newCustomer,
+            unit: updated.unit,
+            notes: updated.notes,
+            categoryId: updated.categoryId,
+            categoryName: updated.category.name,
+            categoryParentId: updated.category.parentId,
+          } as any,
+        },
+      });
+
       return updated;
     });
 
@@ -124,8 +184,46 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await prisma.item.delete({
+    const item = await prisma.item.findUnique({
       where: { id: params.id },
+      include: {
+        category: true,
+      },
+    });
+
+    if (!item) {
+      return NextResponse.json({ success: false, message: 'Item not found' }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.create({
+        data: {
+          actionType: 'DELETE',
+          entityType: 'ITEM',
+          entityId: item.id,
+          entityName: item.name,
+          oldData: {
+            id: item.id,
+            name: item.name,
+            itemCode: item.itemCode,
+            brand: item.brand,
+            modelNumber: item.modelNumber,
+            costPrice: Number(item.costPrice),
+            retailerPrice: Number(item.retailerPrice),
+            customerPrice: Number(item.customerPrice),
+            unit: item.unit,
+            notes: item.notes,
+            createdAt: item.createdAt,
+            categoryId: item.categoryId,
+            categoryName: item.category.name,
+            categoryParentId: item.category.parentId,
+          } as any,
+        },
+      });
+
+      await tx.item.delete({
+        where: { id: params.id },
+      });
     });
 
     return NextResponse.json({ success: true, message: 'Item deleted successfully' });

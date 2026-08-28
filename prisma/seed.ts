@@ -1,191 +1,126 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('Seeding Neon PostgreSQL database...');
+const PARENT_CATEGORIES = [
+  { id: 'ci_parts', name: 'C.I. Submersible Parts', sortOrder: 10 },
+  { id: 'impellers', name: 'Impellers (Openwell & Mono Block)', sortOrder: 20 },
+  { id: 'bearing_set', name: 'Thrust Bearing, Counter & Bearing Set', sortOrder: 30 },
+  { id: 'bush_rubber', name: 'L.B. Bush & Rubber Bush', sortOrder: 40 },
+  { id: 'diffuser_bowl', name: 'Diffuser (Bowl) & Impeller', sortOrder: 50 },
+  { id: 'studs_bolts', name: 'Studs, Nuts, Bolts & Washers', sortOrder: 60 },
+  { id: 'sleeve_couple', name: 'S.S. Sleeve & Couple', sortOrder: 70 },
+  { id: 'key_bowls', name: 'S.S. Key, S.S./C.I. Bowl & Impeller', sortOrder: 80 },
+  { id: 'pump_parts', name: 'S.S. Submersible Pump Parts', sortOrder: 90 },
+];
 
-  // Initialize System Settings with Default Security PIN (1234)
+async function main() {
+  console.log('Starting catalog seeding...');
+  
+  // Set up settings
   const pinHash = await bcrypt.hash('1234', 10);
   await prisma.systemSettings.upsert({
     where: { id: 'settings' },
     update: {},
-    create: {
-      id: 'settings',
-      pinHash,
-      themeMode: 'dark',
-    },
+    create: { id: 'settings', pinHash, themeMode: 'light' },
   });
 
-  // Seed Categories
-  const categoriesData = [
-    { name: 'Bearings' },
-    { name: 'Electrical & Capacitors' },
-    { name: 'Motor Parts' },
-    { name: 'Pump Parts & Impellers' },
-    { name: 'Mechanical Seals & Gaskets' },
-    { name: 'Tools & Accessories' },
-  ];
+  // Clear existing items and categories
+  console.log('Clearing old data to ensure clean hierarchical structure...');
+  await prisma.priceHistory.deleteMany();
+  await prisma.item.deleteMany();
+  await prisma.category.deleteMany();
 
-  const categoriesMap = new Map<string, string>();
-
-  for (const cat of categoriesData) {
-    const created = await prisma.category.upsert({
-      where: { name: cat.name },
-      update: {},
-      create: { name: cat.name },
+  // 1. Seed Parent Categories
+  console.log('Seeding parent categories...');
+  for (const parent of PARENT_CATEGORIES) {
+    await prisma.category.create({
+      data: {
+        id: parent.id,
+        name: parent.name,
+        sortOrder: parent.sortOrder,
+      },
     });
-    categoriesMap.set(cat.name, created.id);
   }
 
-  // Seed Sample Items for Submersible Pump Repair Shop
-  const sampleItems = [
-    {
-      name: 'Bearing 6203 ZZ',
-      itemCode: 'BRG-6203ZZ',
-      categoryName: 'Bearings',
-      brand: 'SKF',
-      modelNumber: '6203-2Z',
-      costPrice: 92,
-      retailerPrice: 120,
-      customerPrice: 150,
-      unit: 'pcs',
-      notes: 'High speed ball bearing for V4/V6 motor',
-    },
-    {
-      name: 'Bearing 6204 2RS',
-      itemCode: 'BRG-6204RS',
-      categoryName: 'Bearings',
-      brand: 'NBC',
-      modelNumber: '6204-2RS',
-      costPrice: 110,
-      retailerPrice: 140,
-      customerPrice: 175,
-      unit: 'pcs',
-      notes: 'Rubber sealed bearing for water pumps',
-    },
-    {
-      name: 'Capacitor 36µF / 440V',
-      itemCode: 'CAP-36UF',
-      categoryName: 'Electrical & Capacitors',
-      brand: 'Tibcon',
-      modelNumber: '36 MFD',
-      costPrice: 110,
-      retailerPrice: 150,
-      customerPrice: 180,
-      unit: 'pcs',
-      notes: 'Starting capacitor for 1HP submersible motor',
-    },
-    {
-      name: 'Capacitor 50µF Heavy Duty',
-      itemCode: 'CAP-50UF',
-      categoryName: 'Electrical & Capacitors',
-      brand: 'Keltron',
-      modelNumber: '50 MFD',
-      costPrice: 145,
-      retailerPrice: 190,
-      customerPrice: 230,
-      unit: 'pcs',
-      notes: 'Heavy duty motor running capacitor',
-    },
-    {
-      name: 'Super Enamelled Copper Wire (21 SWG)',
-      itemCode: 'WRE-21SWG',
-      categoryName: 'Motor Parts',
-      brand: 'RR Shramik',
-      modelNumber: '21 Gauge',
-      costPrice: 850,
-      retailerPrice: 1000,
-      customerPrice: 1150,
-      unit: 'kg',
-      notes: 'Pure copper winding wire per kg',
-    },
-    {
-      name: 'Mechanical Seal 19mm',
-      itemCode: 'SEAL-19MM',
-      categoryName: 'Mechanical Seals & Gaskets',
-      brand: 'Leakproof',
-      modelNumber: 'MS-19',
-      costPrice: 65,
-      retailerPrice: 95,
-      customerPrice: 130,
-      unit: 'set',
-      notes: 'Waterproof shaft seal for 1.5HP openwell pump',
-    },
-    {
-      name: 'Bronze Impeller V4 (V-Type)',
-      itemCode: 'IMP-BRZ-V4',
-      categoryName: 'Pump Parts & Impellers',
-      brand: 'Gunatit',
-      modelNumber: 'V4-100',
-      costPrice: 320,
-      retailerPrice: 420,
-      customerPrice: 520,
-      unit: 'pcs',
-      notes: 'High efficiency bronze impeller',
-    },
-    {
-      name: 'Control Box Single Phase 1.5HP',
-      itemCode: 'CTL-BOX-1.5HP',
-      categoryName: 'Electrical & Capacitors',
-      brand: 'L&T',
-      modelNumber: 'CB-1.5',
-      costPrice: 1250,
-      retailerPrice: 1600,
-      customerPrice: 1950,
-      unit: 'unit',
-      notes: 'Includes ammeter, voltmeter, overload relay',
-    },
-  ];
+  // 2. Read structured catalog JSON
+  const catalogPath = path.join(__dirname, '../src/lib/jkCatalog.json');
+  if (!fs.existsSync(catalogPath)) {
+    throw new Error(`Catalog JSON file not found at: ${catalogPath}`);
+  }
+  
+  const catalogData = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+  console.log(`Loaded ${catalogData.length} category groups from JSON.`);
 
-  for (const item of sampleItems) {
-    const categoryId = categoriesMap.get(item.categoryName);
-    if (!categoryId) continue;
+  let totalItemsSeeded = 0;
 
-    // Check if item exists
-    const existing = await prisma.item.findFirst({
-      where: { name: item.name },
+  // 3. Seed subcategories and items
+  for (const group of catalogData) {
+    const parentId = group.parentId || null;
+    
+    // Create subcategory
+    const subcategory = await prisma.category.create({
+      data: {
+        name: group.name,
+        parentId: parentId,
+        sortOrder: group.sortOrder || 0,
+        sourcePage: group.sourcePage || null,
+      },
     });
 
-    if (!existing) {
-      const createdItem = await prisma.item.create({
+    console.log(`Seeding items for subcategory: ${group.name} (${group.items.length} items)...`);
+
+    for (const sourceItem of group.items) {
+      // Generate item code dynamically
+      const pageStr = sourceItem.sourcePage ? `P${sourceItem.sourcePage}` : 'PX';
+      const itemCode = `JK-${pageStr}-${subcategory.sortOrder || 0}-${sourceItem.sortOrder || 0}`;
+
+      // Create the item
+      const item = await prisma.item.create({
         data: {
-          name: item.name,
-          itemCode: item.itemCode,
-          categoryId,
-          brand: item.brand,
-          modelNumber: item.modelNumber,
-          costPrice: item.costPrice,
-          retailerPrice: item.retailerPrice,
-          customerPrice: item.customerPrice,
-          unit: item.unit,
-          notes: item.notes,
+          name: sourceItem.name,
+          itemCode: itemCode,
+          categoryId: subcategory.id,
+          costPrice: sourceItem.costPrice || 0,
+          retailerPrice: 0,
+          customerPrice: 0,
+          unit: sourceItem.unit || 'pcs',
+          catalogGroup: sourceItem.catalogGroup || null,
+          catalogSrNo: sourceItem.catalogSrNo || null,
+          variantSrNo: sourceItem.variantSrNo || null,
+          sortOrder: sourceItem.sortOrder || 0,
+          sourcePage: sourceItem.sourcePage || null,
+          notes: `JK Spares catalogue, page ${sourceItem.sourcePage || 'unknown'}. Prices are from 2023 list.`,
         },
       });
 
-      // Initial price history record
+      // Log initial price history
       await prisma.priceHistory.create({
         data: {
-          itemId: createdItem.id,
-          oldCostPrice: item.costPrice,
-          newCostPrice: item.costPrice,
-          oldRetailerPrice: item.retailerPrice,
-          newRetailerPrice: item.retailerPrice,
-          oldCustomerPrice: item.customerPrice,
-          newCustomerPrice: item.customerPrice,
-          changeNote: 'Initial item price setup',
+          itemId: item.id,
+          oldCostPrice: sourceItem.costPrice || 0,
+          newCostPrice: sourceItem.costPrice || 0,
+          oldRetailerPrice: 0,
+          newRetailerPrice: 0,
+          oldCustomerPrice: 0,
+          newCustomerPrice: 0,
+          changeNote: 'Imported from JK Spares catalogue',
         },
       });
+
+      totalItemsSeeded++;
     }
   }
 
-  console.log('Seeding completed successfully!');
+  console.log(`Seeding completed successfully! Total items seeded: ${totalItemsSeeded}`);
 }
 
 main()
-  .catch((e) => {
-    console.error('Seed error:', e);
+  .catch((error) => {
+    console.error('Seeding error:', error);
     process.exit(1);
   })
   .finally(async () => {
