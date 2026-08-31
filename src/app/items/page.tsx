@@ -393,7 +393,7 @@ function CategorySection({
           : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
       }`}
     >
-      {/* Category Accordion Header Button (Precision Fixed Height & Sticky Scroll Lock) */}
+      {/* Category Accordion Header Button (Only Main Category depth===0 locks on scroll) */}
       <button
         type="button"
         onClick={() => onToggleCollapse(node.id)}
@@ -407,8 +407,8 @@ function CategorySection({
             : depth === 0
             ? 'h-12 sticky top-[48px] md:top-[52px] z-30 bg-white dark:bg-slate-900 rounded-t-2xl border-b border-slate-200 dark:border-slate-800 shadow-xs px-3.5 sm:px-4 hover:bg-slate-50 dark:hover:bg-slate-850'
             : depth === 1
-            ? 'h-10 sticky top-[96px] md:top-[100px] z-25 bg-slate-100 dark:bg-slate-950 rounded-t-xl border-b border-slate-200/90 dark:border-slate-800/90 shadow-xs px-3 sm:px-3.5 hover:bg-slate-200/70 dark:hover:bg-slate-900'
-            : 'h-9 sticky top-[136px] md:top-[140px] z-20 bg-emerald-50 dark:bg-emerald-950 rounded-t-lg border-b border-emerald-200/60 dark:border-emerald-900/40 shadow-xs px-3 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
+            ? 'h-10 rounded-t-xl border-b border-slate-200/90 dark:border-slate-800/90 px-3 sm:px-3.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200/70 dark:hover:bg-slate-900'
+            : 'h-9 rounded-t-lg border-b border-emerald-200/60 dark:border-emerald-900/40 px-3 bg-emerald-50 dark:bg-emerald-950 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -735,7 +735,7 @@ function ItemsContent() {
 
   // Build recursive category tree structure with matching items
   const categoryTreeNodes: CategoryNode[] = useMemo(() => {
-    const roots: Category[] = [];
+    let roots: Category[] = [];
     const childrenMap = new Map<string, Category[]>();
 
     categories.forEach((cat) => {
@@ -748,6 +748,16 @@ function ItemsContent() {
         childrenMap.get(cat.parentId)!.push(cat);
       }
     });
+
+    if (parentCategoryId) {
+      roots = roots.filter((r) => r.id === parentCategoryId);
+    }
+    if (subCategoryId) {
+      const sub = categories.find((c) => c.id === subCategoryId);
+      if (sub) {
+        roots = [sub];
+      }
+    }
 
     const buildNode = (cat: Category): CategoryNode => {
       const directItems = filteredItems.filter((item) => item.category.id === cat.id);
@@ -765,7 +775,7 @@ function ItemsContent() {
     };
 
     return roots.map(buildNode).filter((node) => node.totalItemCount > 0);
-  }, [categories, filteredItems]);
+  }, [categories, filteredItems, parentCategoryId, subCategoryId]);
 
   const parentCategories = categories.filter((c) => !c.parentId);
   const subCategories = parentCategoryId ? categories.filter((c) => c.parentId === parentCategoryId) : [];
