@@ -12,8 +12,8 @@ export function Header({ onLock }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 px-3 py-2.5 md:px-6 transition-colors shadow-2xs">
-      <div className="flex items-center justify-between max-w-7xl mx-auto">
+    <header className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 px-3 md:px-6 h-[48px] md:h-[52px] flex items-center transition-colors shadow-2xs">
+      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
         {/* Mobile Brand Title */}
         <div className="flex items-center gap-2.5 md:hidden">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-500/20">
