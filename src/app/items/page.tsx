@@ -289,29 +289,36 @@ interface CategoryNode {
   totalItemCount: number;
 }
 
-// ─── Unified Table Rows Component for Nested Hierarchy ─────────────────────────
+// ─── Unified Table Rows Component for Nested Hierarchy with Collapsible Subcategories ───
 function CategoryTableRows({
   node,
   depth,
   isPrivacyMode,
+  isNodeCollapsed,
+  onToggleCollapse,
   onNavigate,
   onEdit,
 }: {
   node: CategoryNode;
   depth: number;
   isPrivacyMode: boolean;
+  isNodeCollapsed: (catId: string) => boolean;
+  onToggleCollapse: (catId: string) => void;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
 }) {
+  const isCollapsed = depth > 0 ? isNodeCollapsed(node.id) : false;
+
   return (
     <>
-      {/* If subcategory (depth > 0), render a clean full-width divider row */}
+      {/* If subcategory (depth > 0), render a clean full-width collapsible divider row */}
       {depth > 0 && (
         <tr
-          className={`border-y border-slate-200 dark:border-slate-800 select-none ${
+          onClick={() => onToggleCollapse(node.id)}
+          className={`border-y border-slate-200 dark:border-slate-800 select-none cursor-pointer transition-colors ${
             depth === 1
-              ? 'bg-slate-100/95 dark:bg-slate-950/95 text-slate-800 dark:text-slate-200'
-              : 'bg-emerald-50/90 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300'
+              ? 'bg-slate-100/95 dark:bg-slate-950/95 hover:bg-slate-200/80 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
+              : 'bg-emerald-50/90 dark:bg-emerald-950/70 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-300'
           }`}
         >
           <td colSpan={6} className="py-2.5 px-3 sm:px-4">
@@ -320,6 +327,15 @@ function CategoryTableRows({
                 depth === 1 ? 'text-xs' : 'text-[11px] pl-3'
               }`}
             >
+              {/* Chevron Collapse Indicator */}
+              <div className="shrink-0 text-slate-400">
+                {isCollapsed ? (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 transition-transform" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 transition-transform" />
+                )}
+              </div>
+
               {depth === 1 ? (
                 <Folder className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
               ) : (
@@ -334,28 +350,32 @@ function CategoryTableRows({
         </tr>
       )}
 
-      {/* Direct items under this category */}
-      {node.items.map((item) => (
-        <ItemRow
-          key={item.id}
-          item={item}
-          isPrivacyMode={isPrivacyMode}
-          onNavigate={onNavigate}
-          onEdit={onEdit}
-        />
-      ))}
+      {/* Direct items under this category when not collapsed */}
+      {!isCollapsed &&
+        node.items.map((item) => (
+          <ItemRow
+            key={item.id}
+            item={item}
+            isPrivacyMode={isPrivacyMode}
+            onNavigate={onNavigate}
+            onEdit={onEdit}
+          />
+        ))}
 
-      {/* Children recursive */}
-      {node.children.map((child) => (
-        <CategoryTableRows
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          isPrivacyMode={isPrivacyMode}
-          onNavigate={onNavigate}
-          onEdit={onEdit}
-        />
-      ))}
+      {/* Children recursive when not collapsed */}
+      {!isCollapsed &&
+        node.children.map((child) => (
+          <CategoryTableRows
+            key={child.id}
+            node={child}
+            depth={depth + 1}
+            isPrivacyMode={isPrivacyMode}
+            isNodeCollapsed={isNodeCollapsed}
+            onToggleCollapse={onToggleCollapse}
+            onNavigate={onNavigate}
+            onEdit={onEdit}
+          />
+        ))}
     </>
   );
 }
@@ -482,6 +502,8 @@ function CategorySection({
                     node={node}
                     depth={0}
                     isPrivacyMode={isPrivacyMode}
+                    isNodeCollapsed={isNodeCollapsed}
+                    onToggleCollapse={onToggleCollapse}
                     onNavigate={onNavigate}
                     onEdit={onEdit}
                   />
