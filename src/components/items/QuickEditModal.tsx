@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, TrendingUp, Pencil, Tag, FolderTree, Building2, Layers } from 'lucide-react';
+import { X, Check, TrendingUp, Pencil, Tag, FolderTree, Building2, Layers, Trash2 } from 'lucide-react';
 import { formatCurrency, calculateProfit, calculateMarkupPercent } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
@@ -34,6 +34,8 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Details editing state (toggled by pencil icon)
   const [showDetails, setShowDetails] = useState(false);
@@ -162,6 +164,25 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
       setError('Network error updating item.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        notify(`Deleted "${name}"`, 'info');
+        onSave();
+        onClose();
+      } else {
+        setError(data.message || 'Failed to delete item');
+      }
+    } catch {
+      setError('Network error deleting item');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -303,10 +324,10 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
           )}
 
           {/* Pricing Grid */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             {/* Cost */}
-            <div className="p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1.5">
-              <label className="text-[11px] font-bold text-rose-800 dark:text-rose-300 block">Cost (₹)</label>
+            <div className="p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1.5 text-center">
+              <label className="text-[11px] font-bold text-rose-800 dark:text-rose-300 block text-center">Cost (₹)</label>
               <input
                 type="number"
                 step="any"
@@ -314,13 +335,13 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
                 required
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 font-mono font-bold text-xs"
+                className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 font-mono font-bold text-xs text-center"
               />
             </div>
 
             {/* Retailer */}
-            <div className="p-3 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/40 space-y-1.5">
-              <div className="flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/40 space-y-1.5 text-center">
+              <div className="flex items-center justify-center gap-1">
                 <label className="text-[11px] font-bold text-cyan-800 dark:text-cyan-300">Retailer (₹)</label>
                 {numCost > 0 && numRetailer > 0 && (
                   <span className="text-[9px] font-mono font-bold text-cyan-700 dark:text-cyan-300">
@@ -334,13 +355,16 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
                 min="0"
                 value={retailer}
                 onChange={(e) => setRetailer(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-900/60 font-mono font-bold text-xs"
+                className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-900/60 font-mono font-bold text-xs text-center"
               />
+              <div className="text-[10px] font-bold text-cyan-700 dark:text-cyan-400 font-mono">
+                +{formatCurrency(retailerProfit)}
+              </div>
             </div>
 
             {/* Customer */}
-            <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-1.5">
-              <div className="flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-1.5 text-center">
+              <div className="flex items-center justify-center gap-1">
                 <label className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">Customer (₹)</label>
                 {numCost > 0 && numCustomer > 0 && (
                   <span className="text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
@@ -354,8 +378,11 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
                 min="0"
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 font-mono font-bold text-xs"
+                className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 font-mono font-bold text-xs text-center"
               />
+              <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                +{formatCurrency(customerProfit)}
+              </div>
             </div>
           </div>
 
@@ -371,22 +398,55 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
             />
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95"
-            >
-              {saving ? 'Saving...' : 'Save Prices'}
-            </button>
+          {/* Footer Actions with Safe Deletion */}
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+            <div>
+              {!confirmDelete ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="px-3 py-1.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-bold transition-all border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50 flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Item</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 animate-fade-in">
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-600/30 transition-all active:scale-95"
+                  >
+                    {deleting ? 'Deleting...' : 'Confirm Delete?'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-2 py-1.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+              >
+                {saving ? 'Saving...' : 'Save Prices'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

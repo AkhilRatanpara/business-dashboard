@@ -2,16 +2,16 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  Search, PlusCircle, Edit3, Trash2, RefreshCw, FileText,
+  Search, PlusCircle, Edit3, RefreshCw, FileText,
   Layers, LayoutGrid, Table2, ChevronDown, ChevronRight, Plus,
-  Building2, Tag, Check, Filter, CornerDownRight, Folder, ChevronsUpDown, ChevronsDown, ChevronsUp, X,
-  Compass
+  Building2, CornerDownRight, Folder, ChevronsDown, ChevronsUp, X,
+  Eye, EyeOff, Lock
 } from 'lucide-react';
-import { formatCurrency, formatProfit, matchSmartSearch } from '@/lib/utils';
+import { formatCurrency, formatProfit, formatMaskedPrice, matchSmartSearch } from '@/lib/utils';
 import { QuickEditModal } from '@/components/items/QuickEditModal';
 import { PdfPriceListModal } from '@/components/items/PdfPriceListModal';
 import { notify } from '@/components/ui/Toast';
@@ -52,25 +52,31 @@ interface Category {
   _count?: { items: number };
 }
 
-// ─── Price Stacked Cell ───────────────────────────────────────────────────────
+// ─── Center-Aligned Price Cell for Table ──────────────────────────────────────
 function PriceCell({
   price,
   profit,
   priceClass,
   profitClass,
   profitBg,
+  isPrivacyMode,
+  isCost,
 }: {
   price: string;
   profit?: number;
   priceClass: string;
   profitClass?: string;
   profitBg?: string;
+  isPrivacyMode?: boolean;
+  isCost?: boolean;
 }) {
   return (
-    <div>
-      <div className={`font-price font-medium text-xs sm:text-sm leading-snug ${priceClass}`}>{price}</div>
-      {profit !== undefined && (
-        <div className={`inline-flex items-center mt-0.5 font-price text-[10px] font-bold px-1.5 py-[2px] rounded-md ${profitBg} ${profitClass} whitespace-nowrap`}>
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className={`font-price font-bold text-xs sm:text-sm leading-snug ${priceClass}`}>
+        {price}
+      </div>
+      {!isPrivacyMode && !isCost && profit !== undefined && (
+        <div className={`inline-flex items-center justify-center mt-0.5 font-price text-[10px] font-bold px-1.5 py-[2px] rounded-md ${profitBg} ${profitClass} whitespace-nowrap`}>
           +{formatProfit(profit)}
         </div>
       )}
@@ -78,82 +84,84 @@ function PriceCell({
   );
 }
 
-// ─── Table Item Row ───────────────────────────────────────────────────────────
+// ─── Table Item Row (Optimized Mobile Layout & Center-Aligned Prices) ──────────
 function ItemRow({
   item,
+  isPrivacyMode,
   onNavigate,
   onEdit,
-  onDelete,
 }: {
   item: Item;
+  isPrivacyMode: boolean;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
-  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
 }) {
   return (
     <tr
       onClick={() => onNavigate(item.id)}
-      className="hover:bg-slate-50/85 dark:hover:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800/60 cursor-pointer transition-colors group"
+      className="hover:bg-slate-50/90 dark:hover:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800/60 cursor-pointer transition-colors group"
     >
+      {/* Mobile-Friendly Vertical Item Column */}
       <td className="py-2.5 px-3 sm:px-4">
-        <div className="flex items-start gap-2">
+        <div className="flex flex-col items-start gap-1">
           {item.srNo && (
-            <span className="shrink-0 mt-0.5 inline-flex rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
+            <span className="inline-flex rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               Sr. {item.srNo}
             </span>
           )}
-          <div className="min-w-0 flex-1">
-            <div className="font-bold text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug">
-              {item.name}
-            </div>
-            {/* Company / Brand displayed directly below Item Name */}
-            {item.brand && (
-              <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight flex items-center gap-1">
-                <Building2 className="w-3 h-3 inline shrink-0" />
-                <span>{item.brand}</span>
-              </div>
-            )}
+          <div className="font-bold text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug">
+            {item.name}
           </div>
+          {item.brand && (
+            <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 leading-tight flex items-center gap-1">
+              <Building2 className="w-3 h-3 inline shrink-0" />
+              <span>{item.brand}</span>
+            </div>
+          )}
         </div>
       </td>
 
-      <td className="py-2.5 px-3 hidden sm:table-cell">
+      <td className="py-2.5 px-3 hidden sm:table-cell text-center">
         <span className="font-price text-xs text-slate-400 dark:text-slate-500 font-mono">{item.itemCode || '—'}</span>
       </td>
 
-      {/* Cost */}
-      <td className="py-2.5 px-3 sm:px-4 align-top">
+      {/* Cost (Masked in Privacy Mode) */}
+      <td className="py-2.5 px-2 sm:px-4 text-center align-middle">
         <PriceCell
-          price={formatCurrency(item.costPrice)}
+          price={formatMaskedPrice(item.costPrice, isPrivacyMode)}
           priceClass="text-rose-600 dark:text-rose-400 font-bold"
+          isPrivacyMode={isPrivacyMode}
+          isCost={true}
         />
       </td>
 
       {/* Retailer */}
-      <td className="py-2.5 px-3 sm:px-4 align-top">
+      <td className="py-2.5 px-2 sm:px-4 text-center align-middle">
         <PriceCell
           price={formatCurrency(item.retailerPrice)}
           profit={item.retailerProfit}
           priceClass="text-cyan-600 dark:text-cyan-400 font-bold"
           profitClass="text-cyan-600 dark:text-cyan-400"
           profitBg="bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-100 dark:border-cyan-900/40"
+          isPrivacyMode={isPrivacyMode}
         />
       </td>
 
       {/* Customer */}
-      <td className="py-2.5 px-3 sm:px-4 align-top">
+      <td className="py-2.5 px-2 sm:px-4 text-center align-middle">
         <PriceCell
           price={formatCurrency(item.customerPrice)}
           profit={item.customerProfit}
           priceClass="text-emerald-600 dark:text-emerald-400 font-black"
           profitClass="text-emerald-600 dark:text-emerald-400"
           profitBg="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40"
+          isPrivacyMode={isPrivacyMode}
         />
       </td>
 
-      {/* Actions */}
-      <td className="py-2.5 px-3 sm:px-4 text-right" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1">
+      {/* Quick Edit Action Only (Accidental delete button removed) */}
+      <td className="py-2.5 px-3 sm:px-4 text-right align-middle" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={(e) => onEdit(e, item)}
@@ -162,31 +170,23 @@ function ItemRow({
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
-          <button
-            type="button"
-            onClick={(e) => onDelete(e, item.id, item.name)}
-            className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800/60 transition-all"
-            title="Delete Item"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
         </div>
       </td>
     </tr>
   );
 }
 
-// ─── Compact Product Card Component ──────────────────────────────────────────
+// ─── Compact Product Card Component (Center-Aligned Prices & Privacy Mode) ────
 function ItemCard({
   item,
+  isPrivacyMode,
   onNavigate,
   onEdit,
-  onDelete,
 }: {
   item: Item;
+  isPrivacyMode: boolean;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
-  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
 }) {
   return (
     <div
@@ -194,7 +194,7 @@ function ItemCard({
       className="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-2.5 relative group flex flex-col justify-between"
     >
       <div className="space-y-1.5">
-        {/* Card Top: Sr No + Item Code + Actions */}
+        {/* Card Top: Sr No + Item Code + Quick Edit Button */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             {item.srNo && (
@@ -213,18 +213,10 @@ function ItemCard({
             <button
               type="button"
               onClick={(e) => onEdit(e, item)}
-              className="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60"
               title="Quick Edit"
             >
               <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => onDelete(e, item.id, item.name)}
-              className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-              title="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -243,43 +235,47 @@ function ItemCard({
         </div>
       </div>
 
-      {/* 3 Price Badges */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/60">
+      {/* 3 Price Badges (Center Aligned) */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
         {/* Cost */}
-        <div className="bg-rose-50/70 dark:bg-rose-950/20 p-1.5 sm:p-2 rounded-xl border border-rose-100 dark:border-rose-900/30">
+        <div className="bg-rose-50/70 dark:bg-rose-950/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center flex flex-col justify-center">
           <div className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-tight">Cost</div>
           <div className="font-price font-black text-xs sm:text-sm text-rose-700 dark:text-rose-300 mt-0.5">
-            {formatCurrency(item.costPrice)}
+            {formatMaskedPrice(item.costPrice, isPrivacyMode)}
           </div>
         </div>
 
         {/* Retailer */}
-        <div className="bg-cyan-50/70 dark:bg-cyan-950/20 p-1.5 sm:p-2 rounded-xl border border-cyan-100 dark:border-cyan-900/30">
+        <div className="bg-cyan-50/70 dark:bg-cyan-950/20 p-2 rounded-xl border border-cyan-100 dark:border-cyan-900/30 text-center flex flex-col justify-center">
           <div className="text-[9px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-tight">Retailer</div>
           <div className="font-price font-black text-xs sm:text-sm text-cyan-700 dark:text-cyan-300 mt-0.5">
             {formatCurrency(item.retailerPrice)}
           </div>
-          <div className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 font-mono mt-0.5">
-            +{formatProfit(item.retailerProfit)}
-          </div>
+          {!isPrivacyMode && (
+            <div className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 font-mono mt-0.5">
+              +{formatProfit(item.retailerProfit)}
+            </div>
+          )}
         </div>
 
         {/* Customer */}
-        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-1.5 sm:p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center flex flex-col justify-center">
           <div className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">Customer</div>
           <div className="font-price font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">
             {formatCurrency(item.customerPrice)}
           </div>
-          <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-            +{formatProfit(item.customerProfit)}
-          </div>
+          {!isPrivacyMode && (
+            <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              +{formatProfit(item.customerProfit)}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Recursive Category Section with Multi-Tier Sticky Locking ────────────────
+// ─── Recursive Category Section with Multi-Tier Solid Sticky Stacking ─────────
 interface CategoryNode {
   id: string;
   name: string;
@@ -292,51 +288,51 @@ function CategorySection({
   node,
   depth,
   viewMode,
+  isPrivacyMode,
   isCollapsed,
   onToggleCollapse,
   isNodeCollapsed,
   onNavigate,
   onEdit,
-  onDelete,
 }: {
   node: CategoryNode;
   depth: number;
   viewMode: 'table' | 'cards';
+  isPrivacyMode: boolean;
   isCollapsed: boolean;
   onToggleCollapse: (catId: string) => void;
   isNodeCollapsed: (catId: string) => boolean;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
-  onDelete: (e: React.MouseEvent, id: string, name: string) => void;
 }) {
   if (node.totalItemCount === 0) return null;
 
   return (
     <div
-      className={`rounded-2xl border transition-all ${
+      className={`rounded-2xl border transition-all overflow-hidden ${
         depth === 0
-          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 shadow-xs'
+          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 shadow-xs'
           : depth === 1
-          ? 'bg-slate-50/60 dark:bg-slate-950/30 border-slate-200/70 dark:border-slate-800/70'
-          : 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/30'
+          ? 'bg-slate-50/80 dark:bg-slate-950/40 border-slate-200/80 dark:border-slate-800/80'
+          : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
       }`}
     >
-      {/* Multi-Tier Sticky Locking Header (Main Category locks at 48px, Subcategory locks at 90px, Sub-sub locks at 128px) */}
+      {/* Solid Sticky Locking Header (Items pass underneath cleanly without clipping) */}
       <button
         type="button"
         onClick={() => onToggleCollapse(node.id)}
         className={`w-full sticky ${
           depth === 0
-            ? 'top-[48px] md:top-[52px] z-12'
+            ? 'top-[48px] md:top-[52px] z-12 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/90 dark:border-slate-800'
             : depth === 1
-            ? 'top-[90px] md:top-[96px] z-11'
-            : 'top-[128px] md:top-[136px] z-10'
-        } backdrop-blur-md flex items-center justify-between transition-all text-left select-none rounded-t-2xl ${
+            ? 'top-[90px] md:top-[96px] z-11 bg-slate-50/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80'
+            : 'top-[128px] md:top-[136px] z-10 bg-emerald-50/95 dark:bg-emerald-950/95 border-b border-emerald-200/50 dark:border-emerald-900/30'
+        } backdrop-blur-md flex items-center justify-between transition-all text-left select-none shadow-2xs ${
           depth === 0
-            ? 'px-3.5 py-2.5 sm:px-4 sm:py-3 bg-white/95 dark:bg-slate-900/95 hover:bg-slate-50 dark:hover:bg-slate-850 border-b border-slate-200/90 dark:border-slate-800 shadow-2xs'
+            ? 'px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-slate-50 dark:hover:bg-slate-850'
             : depth === 1
-            ? 'px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-50/95 dark:bg-slate-950/95 hover:bg-slate-100 dark:hover:bg-slate-850 border-b border-slate-200/70 dark:border-slate-800/70 shadow-2xs'
-            : 'px-3 py-1.5 bg-emerald-50/95 dark:bg-emerald-950/90 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 border-b border-emerald-200/40 dark:border-emerald-900/20'
+            ? 'px-3 py-2 sm:px-3.5 sm:py-2.5 hover:bg-slate-100 dark:hover:bg-slate-850'
+            : 'px-3 py-1.5 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -398,13 +394,13 @@ function CategorySection({
                 <div className="overflow-x-auto rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-2xs">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200/80 dark:border-slate-800">
-                        <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Item & Company</th>
-                        <th className="py-2.5 px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Code</th>
-                        <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Cost</th>
-                        <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Retailer</th>
-                        <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Customer</th>
-                        <th className="py-2.5 px-3 sm:px-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Actions</th>
+                      <tr className="bg-slate-50/80 dark:bg-slate-950/40 border-b border-slate-200/80 dark:border-slate-800 text-center">
+                        <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-left">Item & Company</th>
+                        <th className="py-2.5 px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell text-center">Code</th>
+                        <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 text-center">Cost</th>
+                        <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 text-center">Retailer</th>
+                        <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 text-center">Customer</th>
+                        <th className="py-2.5 px-3 sm:px-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -412,9 +408,9 @@ function CategorySection({
                         <ItemRow
                           key={item.id}
                           item={item}
+                          isPrivacyMode={isPrivacyMode}
                           onNavigate={onNavigate}
                           onEdit={onEdit}
-                          onDelete={onDelete}
                         />
                       ))}
                     </tbody>
@@ -426,9 +422,9 @@ function CategorySection({
                     <ItemCard
                       key={item.id}
                       item={item}
+                      isPrivacyMode={isPrivacyMode}
                       onNavigate={onNavigate}
                       onEdit={onEdit}
-                      onDelete={onDelete}
                     />
                   ))}
                 </div>
@@ -445,12 +441,12 @@ function CategorySection({
                   node={child}
                   depth={depth + 1}
                   viewMode={viewMode}
+                  isPrivacyMode={isPrivacyMode}
                   isCollapsed={isNodeCollapsed(child.id)}
                   onToggleCollapse={onToggleCollapse}
                   isNodeCollapsed={isNodeCollapsed}
                   onNavigate={onNavigate}
                   onEdit={onEdit}
-                  onDelete={onDelete}
                 />
               ))}
             </div>
@@ -471,7 +467,58 @@ function ItemsContent() {
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  // Restore cache and privacy mode on client mount (avoids React hydration mismatch)
+  useEffect(() => {
+    setMounted(true);
+    const savedPrivacy = localStorage.getItem('gunatit_privacy_mode');
+    if (savedPrivacy === 'true') {
+      setIsPrivacyMode(true);
+    }
+
+    const cachedItems = sessionStorage.getItem('gunatit_cached_items');
+    const cachedCats = sessionStorage.getItem('gunatit_cached_cats');
+    const cachedBrands = sessionStorage.getItem('gunatit_cached_brands');
+
+    if (cachedItems) {
+      try {
+        const parsed = JSON.parse(cachedItems);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed);
+          setLoading(false);
+        }
+      } catch {}
+    }
+    if (cachedCats) {
+      try {
+        const parsedCats = JSON.parse(cachedCats);
+        if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+          setCategories(parsedCats);
+        }
+      } catch {}
+    }
+    if (cachedBrands) {
+      try {
+        const parsedBrands = JSON.parse(cachedBrands);
+        if (Array.isArray(parsedBrands) && parsedBrands.length > 0) {
+          setBrands(parsedBrands);
+        }
+      } catch {}
+    }
+  }, []);
+
+  const togglePrivacyMode = () => {
+    setIsPrivacyMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('gunatit_privacy_mode', next.toString());
+      notify(next ? 'Privacy Mode ON (Cost & Profit hidden)' : 'Privacy Mode OFF (All prices shown)', 'info');
+      return next;
+    });
+  };
+
   const [search, setSearch] = useState('');
   const [parentCategoryId, setParentCategoryId] = useState('');
   const [subCategoryId, setSubCategoryId] = useState('');
@@ -479,7 +526,7 @@ function ItemsContent() {
   const [sort, setSort] = useState(initialSort);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
 
-  // Default state: ALL CATEGORIES COLLAPSED BY DEFAULT as requested
+  // Default state: ALL CATEGORIES COLLAPSED BY DEFAULT
   const [allCollapsed, setAllCollapsed] = useState(true);
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
 
@@ -487,7 +534,7 @@ function ItemsContent() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Monitor window scroll to show floating top button on mobile
+  // Monitor window scroll to show floating top button and remember position
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 300) {
@@ -500,12 +547,21 @@ function ItemsContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Restore scroll position after returning from item page
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('gunatit_items_scroll');
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo({ top: Number(savedScroll), behavior: 'auto' });
+      }, 50);
+    }
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const isNodeCollapsed = useCallback((catId: string) => {
-    // If user is actively searching, auto-expand so matching items are visible immediately
     if (search.trim().length > 0) return false;
     return catId in collapsedMap ? collapsedMap[catId] : allCollapsed;
   }, [collapsedMap, allCollapsed, search]);
@@ -532,8 +588,14 @@ function ItemsContent() {
         ]);
         const catsData = await catsRes.json();
         const brandsData = await brandsRes.json();
-        if (catsData.success) setCategories(catsData.categories);
-        if (brandsData.success) setBrands(brandsData.brands);
+        if (catsData.success) {
+          setCategories(catsData.categories);
+          sessionStorage.setItem('gunatit_cached_cats', JSON.stringify(catsData.categories));
+        }
+        if (brandsData.success) {
+          setBrands(brandsData.brands);
+          sessionStorage.setItem('gunatit_cached_brands', JSON.stringify(brandsData.brands));
+        }
       } catch (err) {
         console.error('Failed to load categories/brands:', err);
       }
@@ -542,7 +604,7 @@ function ItemsContent() {
   }, []);
 
   const fetchItems = useCallback(async () => {
-    setLoading(true);
+    if (items.length === 0) setLoading(true);
     try {
       const activeCat = subCategoryId || parentCategoryId || initialCategory;
       const params = new URLSearchParams();
@@ -555,6 +617,7 @@ function ItemsContent() {
       const data = await res.json();
       if (data.success) {
         setItems(data.items);
+        sessionStorage.setItem('gunatit_cached_items', JSON.stringify(data.items));
       }
     } catch (err) {
       console.error('Failed to fetch items:', err);
@@ -562,7 +625,7 @@ function ItemsContent() {
     } finally {
       setLoading(false);
     }
-  }, [search, parentCategoryId, subCategoryId, initialCategory, selectedBrand, sort]);
+  }, [search, parentCategoryId, subCategoryId, initialCategory, selectedBrand, sort, items.length]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -572,30 +635,13 @@ function ItemsContent() {
   }, [fetchItems]);
 
   const handleNavigate = (id: string) => {
+    sessionStorage.setItem('gunatit_items_scroll', window.scrollY.toString());
     router.push(`/items/${id}`);
   };
 
   const handleEdit = (e: React.MouseEvent, item: Item) => {
     e.stopPropagation();
     setSelectedItemForEdit(item);
-  };
-
-  const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
-    e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        notify(`Deleted "${name}"`, 'info');
-        setItems((prev) => prev.filter((i) => i.id !== id));
-      } else {
-        notify(data.message || 'Failed to delete item', 'error');
-      }
-    } catch {
-      notify('Error deleting item', 'error');
-    }
   };
 
   // Client-side smart search filter: supports "283050" -> "28x30x50"
@@ -743,9 +789,29 @@ function ItemsContent() {
             </select>
           </div>
 
-          {/* View Toggles & Expand/Collapse Icon Button Group */}
+          {/* Privacy Eye Button + View Toggles & Expand/Collapse */}
           <div className="sm:col-span-2 flex items-center justify-end gap-1.5">
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0 gap-0.5">
+              {/* Privacy Mode Eye Toggle */}
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                className={`p-1.5 rounded-lg transition-all ${
+                  isPrivacyMode
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title={isPrivacyMode ? 'Privacy Mode Active (Cost hidden)' : 'Hide Cost for Customer View'}
+              >
+                {isPrivacyMode ? (
+                  <EyeOff className="w-3.5 h-3.5 font-bold" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5" />
+                )}
+              </button>
+
+              <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-700 mx-0.5" />
+
               {/* Expand / Collapse All Arrow Icon Button */}
               <button
                 type="button"
@@ -864,12 +930,12 @@ function ItemsContent() {
               node={rootNode}
               depth={0}
               viewMode={viewMode}
+              isPrivacyMode={isPrivacyMode}
               isCollapsed={isNodeCollapsed(rootNode.id)}
               onToggleCollapse={toggleCategoryCollapse}
               isNodeCollapsed={isNodeCollapsed}
               onNavigate={handleNavigate}
               onEdit={handleEdit}
-              onDelete={handleDelete}
             />
           ))}
         </div>

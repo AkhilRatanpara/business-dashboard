@@ -21,6 +21,19 @@ export function formatCurrency(amount: number | string | DecimalLike | null | un
   }).format(numericVal);
 }
 
+/**
+ * Format currency with privacy masking support
+ */
+export function formatMaskedPrice(
+  amount: number | string | DecimalLike | null | undefined,
+  isPrivacyMode: boolean
+): string {
+  if (isPrivacyMode) {
+    return '••••';
+  }
+  return formatCurrency(amount);
+}
+
 interface DecimalLike {
   toNumber(): number;
 }
