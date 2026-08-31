@@ -15,6 +15,7 @@ import { formatCurrency, formatProfit, formatMaskedPrice, matchSmartSearch } fro
 import { QuickEditModal } from '@/components/items/QuickEditModal';
 import { PdfPriceListModal } from '@/components/items/PdfPriceListModal';
 import { notify } from '@/components/ui/Toast';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface Item {
   id: string;
@@ -90,11 +91,13 @@ function PriceCell({
 function ItemRow({
   item,
   isPrivacyMode,
+  isEditor = true,
   onNavigate,
   onEdit,
 }: {
   item: Item;
   isPrivacyMode: boolean;
+  isEditor?: boolean;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
 }) {
@@ -161,19 +164,21 @@ function ItemRow({
         />
       </td>
 
-      {/* Quick Edit Action Only (Accidental delete button removed) */}
-      <td className="py-2.5 px-3 sm:px-4 text-right align-middle" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            onClick={(e) => onEdit(e, item)}
-            className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60 transition-all"
-            title="Quick Edit Prices"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </td>
+      {/* Quick Edit Action Only (Editor Only) */}
+      {isEditor && (
+        <td className="py-2.5 px-3 sm:px-4 text-right align-middle" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={(e) => onEdit(e, item)}
+              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60 transition-all cursor-pointer"
+              title="Quick Edit Prices"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </td>
+      )}
     </tr>
   );
 }
@@ -182,11 +187,13 @@ function ItemRow({
 function ItemCard({
   item,
   isPrivacyMode,
+  isEditor = true,
   onNavigate,
   onEdit,
 }: {
   item: Item;
   isPrivacyMode: boolean;
+  isEditor?: boolean;
   onNavigate: (id: string) => void;
   onEdit: (e: React.MouseEvent, item: Item) => void;
 }) {
@@ -211,16 +218,18 @@ function ItemCard({
             )}
           </div>
 
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={(e) => onEdit(e, item)}
-              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60"
-              title="Quick Edit"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {isEditor && (
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={(e) => onEdit(e, item)}
+                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60 cursor-pointer"
+                title="Quick Edit"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Item Title & Brand */}
@@ -294,6 +303,7 @@ function CategoryTableRows({
   node,
   depth,
   isPrivacyMode,
+  isEditor = true,
   isNodeCollapsed,
   onToggleCollapse,
   onNavigate,
@@ -302,6 +312,7 @@ function CategoryTableRows({
   node: CategoryNode;
   depth: number;
   isPrivacyMode: boolean;
+  isEditor?: boolean;
   isNodeCollapsed: (catId: string) => boolean;
   onToggleCollapse: (catId: string) => void;
   onNavigate: (id: string) => void;
@@ -321,7 +332,7 @@ function CategoryTableRows({
               : 'bg-emerald-50/90 dark:bg-emerald-950/70 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-300'
           }`}
         >
-          <td colSpan={6} className="py-2.5 px-3 sm:px-4">
+          <td colSpan={isEditor ? 6 : 5} className="py-2.5 px-3 sm:px-4">
             <div
               className={`flex items-center gap-2 font-bold ${
                 depth === 1 ? 'text-xs' : 'text-[11px] pl-3'
@@ -339,7 +350,7 @@ function CategoryTableRows({
               {depth === 1 ? (
                 <Folder className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
               ) : (
-                <CornerDownRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <CornerDownRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               )}
               <span>{node.name}</span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 leading-none">
@@ -357,6 +368,7 @@ function CategoryTableRows({
             key={item.id}
             item={item}
             isPrivacyMode={isPrivacyMode}
+            isEditor={isEditor}
             onNavigate={onNavigate}
             onEdit={onEdit}
           />
@@ -370,6 +382,7 @@ function CategoryTableRows({
             node={child}
             depth={depth + 1}
             isPrivacyMode={isPrivacyMode}
+            isEditor={isEditor}
             isNodeCollapsed={isNodeCollapsed}
             onToggleCollapse={onToggleCollapse}
             onNavigate={onNavigate}
@@ -385,6 +398,7 @@ function CategorySection({
   depth,
   viewMode,
   isPrivacyMode,
+  isEditor = true,
   isCollapsed,
   onToggleCollapse,
   isNodeCollapsed,
@@ -395,6 +409,7 @@ function CategorySection({
   depth: number;
   viewMode: 'table' | 'cards';
   isPrivacyMode: boolean;
+  isEditor?: boolean;
   isCollapsed: boolean;
   onToggleCollapse: (catId: string) => void;
   isNodeCollapsed: (catId: string) => boolean;
@@ -494,7 +509,9 @@ function CategorySection({
                     <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 text-center">Cost</th>
                     <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 text-center">Retailer</th>
                     <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 text-center">Customer</th>
-                    <th className="py-2.5 px-3 sm:px-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Action</th>
+                    {isEditor && (
+                      <th className="py-2.5 px-3 sm:px-4 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -502,6 +519,7 @@ function CategorySection({
                     node={node}
                     depth={0}
                     isPrivacyMode={isPrivacyMode}
+                    isEditor={isEditor}
                     isNodeCollapsed={isNodeCollapsed}
                     onToggleCollapse={onToggleCollapse}
                     onNavigate={onNavigate}
@@ -521,6 +539,7 @@ function CategorySection({
                       key={item.id}
                       item={item}
                       isPrivacyMode={isPrivacyMode}
+                      isEditor={isEditor}
                       onNavigate={onNavigate}
                       onEdit={onEdit}
                     />
@@ -538,6 +557,7 @@ function CategorySection({
                       depth={depth + 1}
                       viewMode={viewMode}
                       isPrivacyMode={isPrivacyMode}
+                      isEditor={isEditor}
                       isCollapsed={isNodeCollapsed(child.id)}
                       onToggleCollapse={onToggleCollapse}
                       isNodeCollapsed={isNodeCollapsed}
@@ -559,6 +579,7 @@ function CategorySection({
 function ItemsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isViewer, isEditor } = useAuth();
   const initialCategory = searchParams.get('categoryId') || '';
   const initialSort = searchParams.get('sort') || 'default';
 
@@ -828,13 +849,16 @@ function ItemsContent() {
             <span className="hidden sm:inline">Print Price List</span>
           </button>
 
-          <Link
-            href="/items/new"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add Item</span>
-          </Link>
+          {/* Add Item Button (Editor Only) */}
+          {isEditor && (
+            <Link
+              href="/items/new"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Add Item</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -1019,15 +1043,17 @@ function ItemsContent() {
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {search ? `No products matched "${search}". Try searching numbers like "283050" or clear filters.` : 'No products found.'}
           </p>
-          <div className="pt-2">
-            <Link
-              href="/items/new"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-slate-950 font-bold text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create New Item</span>
-            </Link>
-          </div>
+          {isEditor && (
+            <div className="pt-2">
+              <Link
+                href="/items/new"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-slate-950 font-bold text-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create New Item</span>
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         /* Category-Wise Accordion (Supports both Table and Card view modes) */
@@ -1039,6 +1065,7 @@ function ItemsContent() {
               depth={0}
               viewMode={viewMode}
               isPrivacyMode={isPrivacyMode}
+              isEditor={isEditor}
               isCollapsed={isNodeCollapsed(rootNode.id)}
               onToggleCollapse={toggleCategoryCollapse}
               isNodeCollapsed={isNodeCollapsed}

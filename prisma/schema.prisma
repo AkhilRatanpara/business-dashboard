@@ -86,10 +86,11 @@ model PriceHistory {
 }
 
 model SystemSettings {
-  id        String   @id @default("settings")
-  pinHash   String   @map("pin_hash")
-  themeMode String   @default("dark") @map("theme_mode")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String   @id @default("settings")
+  pinHash        String   @map("pin_hash")
+  viewerPinHash  String?  @map("viewer_pin_hash")
+  themeMode      String   @default("dark") @map("theme_mode")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
 }
