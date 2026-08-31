@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, TrendingUp, Pencil, Tag, FolderTree, Building2, Layers, Trash2 } from 'lucide-react';
+import { X, Check, TrendingUp, Pencil, Tag, FolderTree, Building2, Layers, Trash2, Folder } from 'lucide-react';
+import { ModernDropdown } from '@/components/ui/ModernDropdown';
 import { formatCurrency, calculateProfit, calculateMarkupPercent } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
@@ -270,54 +271,56 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Company / Brand</label>
-                  <select
+                <div>
+                  <ModernDropdown
+                    label="Company / Brand"
+                    icon={<Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                    placeholder="Select Brand"
                     value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold"
-                  >
-                    <option value="">(No Brand / General)</option>
-                    {brands.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setBrand}
+                    options={[
+                      { value: '', label: '(No Brand / General)' },
+                      ...brands.map((b) => ({
+                        value: b,
+                        label: b,
+                        icon: <Building2 className="w-3.5 h-3.5" />,
+                      })),
+                    ]}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Category</label>
-                  <select
+                <div>
+                  <ModernDropdown
+                    label="Category"
+                    icon={<Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                    placeholder="Select Category"
                     value={parentCategoryId}
-                    onChange={(e) => handleParentChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
-                  >
-                    {parentCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleParentChange}
+                    options={parentCategories.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                      icon: <Layers className="w-3.5 h-3.5" />,
+                    }))}
+                  />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Subcategory</label>
-                  <select
-                    value={subCategoryId}
-                    onChange={(e) => setSubCategoryId(e.target.value)}
+                <div>
+                  <ModernDropdown
+                    label="Subcategory"
+                    icon={<Folder className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />}
+                    placeholder={subCategories.length === 0 ? '(None / Direct)' : 'Select Subcategory'}
                     disabled={subCategories.length === 0}
-                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 disabled:opacity-50"
-                  >
-                    <option value="">(None / Direct to Main)</option>
-                    {subCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    disabledPlaceholder="(None / Direct)"
+                    value={subCategoryId}
+                    onChange={setSubCategoryId}
+                    options={subCategories.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                      icon: <Folder className="w-3.5 h-3.5" />,
+                    }))}
+                  />
                 </div>
               </div>
             </div>

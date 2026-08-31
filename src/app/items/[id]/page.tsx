@@ -7,7 +7,6 @@ import { ArrowLeft, Edit3, Trash2, History, Building2, Calendar, Clock, Eye, Eye
 import { formatCurrency, formatDateTime, formatDate, formatMaskedPrice, formatProfit } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { notify } from '@/components/ui/Toast';
-import { useAuth } from '@/components/auth/AuthContext';
 
 interface ItemDetails {
   id: string;
@@ -53,7 +52,6 @@ export default function ItemDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const { isEditor } = useAuth();
 
   const [item, setItem] = useState<ItemDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,43 +220,38 @@ export default function ItemDetailPage() {
             {isPrivacyMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
 
-          {/* Edit & Delete Action Buttons (Editor Only) */}
-          {isEditor && (
-            <>
-              <Link
-                href={`/items/${id}/edit`}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4" />
-                <span>Edit Item</span>
-              </Link>
+          <Link
+            href={`/items/${id}/edit`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Edit Item</span>
+          </Link>
 
-              {!confirmDelete ? (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="p-2.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950 border border-slate-200 dark:border-slate-800 text-rose-600 dark:text-rose-400 transition-all shadow-xs cursor-pointer"
-                  title="Delete Item"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="flex items-center gap-1.5 animate-fade-in">
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95 cursor-pointer"
-                  >
-                    {deleting ? 'Deleting...' : 'Confirm?'}
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-2 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="p-2.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950 border border-slate-200 dark:border-slate-800 text-rose-600 dark:text-rose-400 transition-all shadow-xs"
+              title="Delete Item"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 animate-fade-in">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md shadow-rose-600/30 transition-all active:scale-95"
+              >
+                {deleting ? 'Deleting...' : 'Confirm?'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="px-2 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold"
+              >
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       </div>

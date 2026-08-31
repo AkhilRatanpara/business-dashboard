@@ -1,22 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Delete, Lock, KeyRound, Wrench, Eye, ShieldAlert, Sparkles } from 'lucide-react';
+import { ShieldCheck, Delete, Lock, Eye, EyeOff, Sparkles, KeyRound, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UserRole } from '@/lib/pin';
 
 interface PinLockModalProps {
-  onSuccess: (role: UserRole) => void;
+  onSuccess: () => void;
 }
 
 export function PinLockModal({ onSuccess }: PinLockModalProps) {
   const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const handleKeyPress = (num: string) => {
-    if (loading) return;
+    if (loading || isUnlocked) return;
     if (pin.length < 4) {
       const nextPin = pin + num;
       setPin(nextPin);
@@ -29,13 +30,13 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
   };
 
   const handleBackspace = () => {
-    if (loading) return;
+    if (loading || isUnlocked) return;
     setPin((prev) => prev.slice(0, -1));
     setError('');
   };
 
   const handleClear = () => {
-    if (loading) return;
+    if (loading || isUnlocked) return;
     setPin('');
     setError('');
   };
@@ -51,20 +52,29 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
 
       const data = await res.json();
 
-      if (data.success && data.role) {
-        onSuccess(data.role as UserRole);
+      if (data.success) {
+        setIsUnlocked(true);
+        setTimeout(() => {
+          onSuccess();
+        }, 350);
       } else {
-        setError(data.message || 'Incorrect PIN code');
+        setError(data.message || 'Incorrect 4-digit PIN code');
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 500);
         setPin('');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError('Server connection error. Please try again.');
       setPin('');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickFillDefault = () => {
+    if (loading || isUnlocked) return;
+    setPin('1234');
+    verifyPinCode('1234');
   };
 
   // Listen to physical keyboard typing
@@ -76,117 +86,175 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
         handleBackspace();
       } else if (e.key === 'Escape') {
         handleClear();
+      } else if (e.key === 'Enter' && pin.length === 4) {
+        verifyPinCode(pin);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pin, loading]);
+  }, [pin, loading, isUnlocked]);
+
+  const keypadButtons = [
+    { num: '1', letters: '' },
+    { num: '2', letters: 'ABC' },
+    { num: '3', letters: 'DEF' },
+    { num: '4', letters: 'GHI' },
+    { num: '5', letters: 'JKL' },
+    { num: '6', letters: 'MNO' },
+    { num: '7', letters: 'PQRS' },
+    { num: '8', letters: 'TUV' },
+    { num: '9', letters: 'WXYZ' },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-100/90 dark:bg-slate-950/95 backdrop-blur-2xl p-4 overflow-y-auto">
-      <div className="w-full max-w-sm mx-auto flex flex-col items-center">
-        {/* Header Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xl shadow-emerald-500/10 mb-3">
-          <Wrench className="w-8 h-8 font-bold" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-3xl p-4 overflow-y-auto select-none">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-sm mx-auto flex flex-col items-center relative z-10">
+        {/* Branding & Shield */}
+        <div className="relative mb-3">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-2xl shadow-emerald-500/20 transition-transform active:scale-95">
+            {isUnlocked ? (
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 animate-bounce" />
+            ) : (
+              <Lock className="w-8 h-8 font-bold animate-pulse" />
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-900 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <ShieldCheck className="w-3.5 h-3.5" />
+          </div>
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-          GUNATIT SUBMERSIBLE
-        </h2>
-        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-extrabold uppercase tracking-wider mb-5">
+        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+          <span>GUNATIT SHOP</span>
+        </h1>
+        <p className="text-[11px] text-emerald-400/90 font-mono font-bold uppercase tracking-widest mb-5">
           Price Book Security Gatekeeper
         </p>
 
-        <div className="w-full bg-white dark:bg-slate-900 rounded-3xl p-6 flex flex-col items-center shadow-2xl border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 text-xs font-extrabold uppercase tracking-wide mb-5">
-            <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Enter 4-Digit Passcode</span>
+        {/* Security Card */}
+        <div className="w-full bg-slate-900/90 rounded-3xl p-6 flex flex-col items-center shadow-2xl border border-slate-800 backdrop-blur-xl">
+          <div className="flex items-center justify-between w-full mb-5 px-1">
+            <div className="flex items-center gap-2 text-slate-300 text-xs font-bold">
+              <KeyRound className="w-4 h-4 text-emerald-400" />
+              <span>Enter 4-Digit Passcode</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPin(!showPin)}
+              className="text-slate-400 hover:text-slate-200 text-xs flex items-center gap-1 transition-colors"
+              title={showPin ? 'Hide PIN' : 'Show PIN'}
+            >
+              {showPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="text-[10px] font-semibold">{showPin ? 'Mask' : 'Peek'}</span>
+            </button>
           </div>
 
-          {/* PIN Dot Indicators */}
+          {/* PIN Digit / Dot Indicators */}
           <div
             className={cn(
-              'flex items-center justify-center gap-4 mb-5 transition-all',
+              'flex items-center justify-center gap-3.5 mb-5 transition-all',
               isShaking && 'animate-shake'
             )}
           >
             {[0, 1, 2, 3].map((index) => {
               const isFilled = pin.length > index;
+              const digit = pin[index];
               return (
                 <div
                   key={index}
                   className={cn(
-                    'w-4 h-4 rounded-full border-2 transition-all duration-200',
+                    'w-12 h-12 rounded-2xl border flex items-center justify-center font-mono text-lg font-black transition-all duration-200',
                     isFilled
-                      ? 'bg-emerald-500 border-emerald-500 scale-125 shadow-md shadow-emerald-500/40'
-                      : 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800'
+                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-500/20 scale-105'
+                      : 'border-slate-800 bg-slate-950/60 text-slate-600'
                   )}
-                />
+                >
+                  {isFilled ? (
+                    showPin ? (
+                      digit
+                    ) : (
+                      <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
+                    )
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-slate-800" />
+                  )}
+                </div>
               );
             })}
           </div>
 
           {/* Error Message */}
           {error && (
-            <p className="text-xs font-bold text-rose-700 dark:text-rose-400 mb-4 text-center bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/20">
+            <div className="text-xs font-bold text-rose-400 mb-4 text-center bg-rose-950/50 px-3.5 py-1.5 rounded-xl border border-rose-800/60 w-full animate-fade-in">
               {error}
-            </p>
+            </div>
           )}
 
           {/* Keypad Grid */}
-          <div className="grid grid-cols-3 gap-3 w-full max-w-[260px] mb-4">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+          <div className="grid grid-cols-3 gap-2.5 w-full max-w-[270px] mb-4">
+            {keypadButtons.map(({ num, letters }) => (
               <button
                 key={num}
+                type="button"
                 onClick={() => handleKeyPress(num)}
-                disabled={loading}
-                className="keypad-btn h-13 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xl font-black transition-all shadow-xs active:bg-emerald-500 active:text-white cursor-pointer"
+                disabled={loading || isUnlocked}
+                className="h-14 rounded-2xl bg-slate-800/80 hover:bg-slate-700/90 active:bg-emerald-500 active:text-slate-950 border border-slate-750 text-white flex flex-col items-center justify-center transition-all duration-150 shadow-xs cursor-pointer group active:scale-95 disabled:opacity-50"
               >
-                {num}
+                <span className="text-lg font-black leading-none group-active:text-slate-950">{num}</span>
+                {letters && (
+                  <span className="text-[9px] font-bold text-slate-400 tracking-wider mt-0.5 leading-none group-active:text-slate-900">
+                    {letters}
+                  </span>
+                )}
               </button>
             ))}
 
+            {/* Clear Button */}
             <button
+              type="button"
               onClick={handleClear}
-              disabled={loading}
-              className="keypad-btn h-13 rounded-2xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-extrabold transition-all cursor-pointer"
+              disabled={loading || isUnlocked}
+              className="h-14 rounded-2xl bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-black transition-all active:scale-95 border border-slate-800 cursor-pointer disabled:opacity-50"
             >
               CLEAR
             </button>
 
+            {/* 0 Button */}
             <button
+              type="button"
               onClick={() => handleKeyPress('0')}
-              disabled={loading}
-              className="keypad-btn h-13 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xl font-black transition-all shadow-xs active:bg-emerald-500 active:text-white cursor-pointer"
+              disabled={loading || isUnlocked}
+              className="h-14 rounded-2xl bg-slate-800/80 hover:bg-slate-700/90 active:bg-emerald-500 active:text-slate-950 border border-slate-750 text-white flex flex-col items-center justify-center transition-all duration-150 shadow-xs cursor-pointer group active:scale-95 disabled:opacity-50"
             >
-              0
+              <span className="text-lg font-black leading-none group-active:text-slate-950">0</span>
             </button>
 
+            {/* Backspace Button */}
             <button
+              type="button"
               onClick={handleBackspace}
-              disabled={loading}
-              className="keypad-btn h-13 rounded-2xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 flex items-center justify-center transition-all cursor-pointer"
+              disabled={loading || isUnlocked}
+              className="h-14 rounded-2xl bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-all active:scale-95 border border-slate-800 cursor-pointer disabled:opacity-50"
+              title="Backspace"
             >
               <Delete className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Role Access Information Pills */}
-          <div className="w-full pt-3 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-2 gap-2 text-center text-[10px]">
-            <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
-              <div className="font-bold text-cyan-600 dark:text-cyan-400 flex items-center justify-center gap-1">
-                <Eye className="w-3 h-3" /> Viewer Mode
-              </div>
-              <div className="text-slate-400 font-mono mt-0.5 font-bold">PIN: 1250</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
-              <div className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3 h-3" /> Editor Mode
-              </div>
-              <div className="text-slate-400 font-mono mt-0.5 font-bold">PIN: 4142</div>
-            </div>
+          {/* Quick Default PIN Helper */}
+          <div className="pt-2 border-t border-slate-800/80 w-full flex items-center justify-between text-[11px] text-slate-400">
+            <span>Forgot code?</span>
+            <button
+              type="button"
+              onClick={handleQuickFillDefault}
+              className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Default: 1234</span>
+            </button>
           </div>
         </div>
       </div>

@@ -6,8 +6,9 @@ import Link from 'next/link';
 import {
   ArrowLeft, Save, Plus, PlusCircle, Check, X,
   FolderTree, Tag, Building2, Layers, AlertTriangle, Trash2,
-  TrendingUp, Sparkles, RefreshCw, FilePlus
+  TrendingUp, Sparkles, RefreshCw, FilePlus, Folder, CornerDownRight, Package
 } from 'lucide-react';
+import { ModernDropdown } from '@/components/ui/ModernDropdown';
 import { formatCurrency, calculateProfit, calculateMarkupPercent, matchSmartSearch } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
@@ -599,101 +600,57 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* L1 Main Parent Category */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Main Category (L1) <span className="text-rose-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddParentModal(true)}
-                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>+ New</span>
-                </button>
-              </div>
-              <select
-                value={parentCategoryId}
-                onChange={(e) => handleParentChange(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
-              >
-                <option value="" disabled>Select Main Category</option>
-                {parentCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ModernDropdown
+              label="Main Category (L1)"
+              required
+              icon={<Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+              placeholder="Select Main Category"
+              value={parentCategoryId}
+              onChange={handleParentChange}
+              onAddNew={() => setShowAddParentModal(true)}
+              addNewText="+ New Category"
+              options={parentCategories.map((cat) => ({
+                value: cat.id,
+                label: cat.name,
+                icon: <Layers className="w-3.5 h-3.5" />,
+              }))}
+            />
 
             {/* L2 Subcategory */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Subcategory (L2)
-                </label>
-                {parentCategoryId && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubModal(true)}
-                    className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>+ New</span>
-                  </button>
-                )}
-              </div>
-              <select
-                value={subCategoryId}
-                onChange={(e) => handleSubChange(e.target.value)}
-                disabled={subCategories.length === 0}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                <option value="">
-                  {subCategories.length === 0 ? '(None - Direct to Main)' : 'Select Subcategory'}
-                </option>
-                {subCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ModernDropdown
+              label="Subcategory (L2)"
+              icon={<Folder className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />}
+              placeholder={subCategories.length === 0 ? '(No Subcategories - Direct to Main)' : 'Select Subcategory'}
+              disabled={!parentCategoryId || subCategories.length === 0}
+              disabledPlaceholder={!parentCategoryId ? 'Select Main Category first' : '(None - Direct to Main)'}
+              value={subCategoryId}
+              onChange={handleSubChange}
+              onAddNew={parentCategoryId ? () => setShowAddSubModal(true) : undefined}
+              addNewText="+ New Subcategory"
+              options={subCategories.map((cat) => ({
+                value: cat.id,
+                label: cat.name,
+                icon: <Folder className="w-3.5 h-3.5" />,
+              }))}
+            />
 
             {/* L3 Sub-Subcategory */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Sub-Subcategory (L3)
-                </label>
-                {subCategoryId && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddSubSubModal(true)}
-                    className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>+ New</span>
-                  </button>
-                )}
-              </div>
-              <select
-                value={subSubCategoryId}
-                onChange={(e) => setSubSubCategoryId(e.target.value)}
-                disabled={!subCategoryId || subSubCategories.length === 0}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                <option value="">
-                  {subSubCategories.length === 0 ? '(None - Use Subcategory)' : 'Select Sub-Subcategory'}
-                </option>
-                {subSubCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ModernDropdown
+              label="Sub-Subcategory (L3)"
+              icon={<CornerDownRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+              placeholder={subSubCategories.length === 0 ? '(None - Use Subcategory)' : 'Select Sub-Subcategory'}
+              disabled={!subCategoryId || subSubCategories.length === 0}
+              disabledPlaceholder={!subCategoryId ? 'Select Subcategory first' : '(None - Use Subcategory)'}
+              value={subSubCategoryId}
+              onChange={setSubSubCategoryId}
+              onAddNew={subCategoryId ? () => setShowAddSubSubModal(true) : undefined}
+              addNewText="+ New Sub-Sub"
+              options={subSubCategories.map((cat) => ({
+                value: cat.id,
+                label: cat.name,
+                icon: <CornerDownRight className="w-3.5 h-3.5" />,
+              }))}
+            />
           </div>
         </div>
 
@@ -813,34 +770,24 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
             </div>
 
             {/* Company / Brand Selection */}
-            <div className="sm:col-span-6 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Company / Brand</span>
-                  <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddBrandModal(true)}
-                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>+ New Brand</span>
-                </button>
-              </div>
-              <select
+            <div className="sm:col-span-6">
+              <ModernDropdown
+                label="Company / Brand"
+                icon={<Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                placeholder="Select Brand (Optional)"
                 value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
-              >
-                <option value="">(No Brand / Generic)</option>
-                {brands.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
+                onChange={setBrand}
+                onAddNew={() => setShowAddBrandModal(true)}
+                addNewText="+ New Brand"
+                options={[
+                  { value: '', label: '(No Brand / Generic)' },
+                  ...brands.map((b) => ({
+                    value: b,
+                    label: b,
+                    icon: <Building2 className="w-3.5 h-3.5" />,
+                  })),
+                ]}
+              />
             </div>
 
             {/* Item Code */}
@@ -858,23 +805,23 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
             </div>
 
             {/* Unit */}
-            <div className="sm:col-span-3 space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Unit of Measure
-              </label>
-              <select
+            <div className="sm:col-span-3">
+              <ModernDropdown
+                label="Unit of Measure"
+                icon={<Package className="w-3.5 h-3.5 text-slate-400" />}
                 value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
-              >
-                <option value="pcs">Pieces (pcs)</option>
-                <option value="set">Set (set)</option>
-                <option value="pkt">Packet (pkt)</option>
-                <option value="box">Box (box)</option>
-                <option value="mtr">Meter (mtr)</option>
-                <option value="kg">Kilogram (kg)</option>
-                <option value="ltr">Liter (ltr)</option>
-              </select>
+                onChange={setUnit}
+                searchable={false}
+                options={[
+                  { value: 'pcs', label: 'Pieces (pcs)' },
+                  { value: 'set', label: 'Set (set)' },
+                  { value: 'pkt', label: 'Packet (pkt)' },
+                  { value: 'box', label: 'Box (box)' },
+                  { value: 'mtr', label: 'Meter (mtr)' },
+                  { value: 'kg', label: 'Kilogram (kg)' },
+                  { value: 'ltr', label: 'Liter (ltr)' },
+                ]}
+              />
             </div>
           </div>
         </div>
