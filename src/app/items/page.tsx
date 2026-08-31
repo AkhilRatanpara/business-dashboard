@@ -71,14 +71,16 @@ function PriceCell({
   isCost?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center">
+    <div className="flex flex-col items-center justify-center text-center py-1">
       <div className={`font-price font-bold text-xs sm:text-sm leading-snug ${priceClass}`}>
         {price}
       </div>
-      {!isPrivacyMode && !isCost && profit !== undefined && (
+      {!isPrivacyMode && !isCost && profit !== undefined ? (
         <div className={`inline-flex items-center justify-center mt-0.5 font-price text-[10px] font-bold px-1.5 py-[2px] rounded-md ${profitBg} ${profitClass} whitespace-nowrap`}>
           +{formatProfit(profit)}
         </div>
+      ) : (
+        <div className="h-2" />
       )}
     </div>
   );
@@ -235,10 +237,10 @@ function ItemCard({
         </div>
       </div>
 
-      {/* 3 Price Badges (Center Aligned) */}
+      {/* 3 Price Badges (Center Aligned with Uniform Height) */}
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
         {/* Cost */}
-        <div className="bg-rose-50/70 dark:bg-rose-950/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center flex flex-col justify-center">
+        <div className="bg-rose-50/70 dark:bg-rose-950/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center flex flex-col justify-center min-h-[58px]">
           <div className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-tight">Cost</div>
           <div className="font-price font-black text-xs sm:text-sm text-rose-700 dark:text-rose-300 mt-0.5">
             {formatMaskedPrice(item.costPrice, isPrivacyMode)}
@@ -246,28 +248,32 @@ function ItemCard({
         </div>
 
         {/* Retailer */}
-        <div className="bg-cyan-50/70 dark:bg-cyan-950/20 p-2 rounded-xl border border-cyan-100 dark:border-cyan-900/30 text-center flex flex-col justify-center">
+        <div className="bg-cyan-50/70 dark:bg-cyan-950/20 p-2 rounded-xl border border-cyan-100 dark:border-cyan-900/30 text-center flex flex-col justify-center min-h-[58px]">
           <div className="text-[9px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-tight">Retailer</div>
           <div className="font-price font-black text-xs sm:text-sm text-cyan-700 dark:text-cyan-300 mt-0.5">
             {formatCurrency(item.retailerPrice)}
           </div>
-          {!isPrivacyMode && (
+          {!isPrivacyMode ? (
             <div className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 font-mono mt-0.5">
               +{formatProfit(item.retailerProfit)}
             </div>
+          ) : (
+            <div className="h-2" />
           )}
         </div>
 
         {/* Customer */}
-        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center flex flex-col justify-center">
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center flex flex-col justify-center min-h-[58px]">
           <div className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">Customer</div>
           <div className="font-price font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">
             {formatCurrency(item.customerPrice)}
           </div>
-          {!isPrivacyMode && (
+          {!isPrivacyMode ? (
             <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
               +{formatProfit(item.customerProfit)}
             </div>
+          ) : (
+            <div className="h-2" />
           )}
         </div>
       </div>

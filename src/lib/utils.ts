@@ -29,7 +29,7 @@ export function formatMaskedPrice(
   isPrivacyMode: boolean
 ): string {
   if (isPrivacyMode) {
-    return '••••';
+    return '₹••••';
   }
   return formatCurrency(amount);
 }
