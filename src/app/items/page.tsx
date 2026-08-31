@@ -178,7 +178,7 @@ function ItemRow({
   );
 }
 
-// ─── Compact Product Card Component (Center-Aligned Prices & Privacy Mode) ────
+// ─── Modern Product Card Component (Matches Home Page Design with Profit Badges) ──
 function ItemCard({
   item,
   isPrivacyMode,
@@ -193,87 +193,89 @@ function ItemCard({
   return (
     <div
       onClick={() => onNavigate(item.id)}
-      className="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-2.5 z-0 group flex flex-col justify-between"
+      className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-3 cursor-pointer hover:border-emerald-500/40 hover:shadow-md transition-all group select-none flex flex-col justify-between"
     >
-      <div className="space-y-1.5">
-        {/* Card Top: Sr No + Item Code + Quick Edit Button */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
             {item.srNo && (
               <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                 Sr. {item.srNo}
               </span>
             )}
             {item.itemCode && (
-              <span className="font-mono text-[10px] font-semibold text-slate-400">
+              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">
                 {item.itemCode}
               </span>
             )}
           </div>
-
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={(e) => onEdit(e, item)}
-              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60"
-              title="Quick Edit"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Item Title & Brand */}
-        <div>
-          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-xs sm:text-sm leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+          <h4 className="font-black text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
             {item.name}
           </h4>
-          {item.brand && (
-            <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
-              <Building2 className="w-3 h-3 inline shrink-0" />
-              <span>{item.brand}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap text-xs">
+            {item.brand && (
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                {item.brand} •
+              </span>
+            )}
+            <span className="text-slate-500 dark:text-slate-400 font-medium">
+              {item.category?.name}
+            </span>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(e, item);
+          }}
+          className="px-3 py-1.5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all border border-emerald-200/60 dark:border-emerald-800/40 shadow-2xs shrink-0 cursor-pointer"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+          <span>Edit</span>
+        </button>
       </div>
 
-      {/* 3 Price Badges (Center Aligned with Uniform Height) */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
-        {/* Cost */}
-        <div className="bg-rose-50/70 dark:bg-rose-950/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center flex flex-col justify-center min-h-[58px]">
-          <div className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-tight">Cost</div>
-          <div className="font-price font-black text-xs sm:text-sm text-rose-700 dark:text-rose-300 mt-0.5">
-            {formatMaskedPrice(item.costPrice, isPrivacyMode)}
-          </div>
+      {/* Pricing Row matching screenshot with profit badges */}
+      <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-center items-center">
+        {/* COST */}
+        <div className="bg-rose-50/80 dark:bg-rose-950/30 p-2 sm:p-2.5 rounded-2xl border border-rose-100 dark:border-rose-900/40 flex flex-col items-center justify-center min-h-[58px]">
+          <span className="text-[10px] text-rose-700 dark:text-rose-400 font-black block uppercase tracking-wider">
+            COST
+          </span>
+          <span className="font-mono font-black text-rose-700 dark:text-rose-400 text-sm sm:text-base mt-0.5">
+            {isPrivacyMode ? '••••' : formatCurrency(item.costPrice)}
+          </span>
         </div>
 
-        {/* Retailer */}
-        <div className="bg-cyan-50/70 dark:bg-cyan-950/20 p-2 rounded-xl border border-cyan-100 dark:border-cyan-900/30 text-center flex flex-col justify-center min-h-[58px]">
-          <div className="text-[9px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase tracking-tight">Retailer</div>
-          <div className="font-price font-black text-xs sm:text-sm text-cyan-700 dark:text-cyan-300 mt-0.5">
-            {formatCurrency(item.retailerPrice)}
-          </div>
-          {!isPrivacyMode ? (
-            <div className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 font-mono mt-0.5">
-              +{formatProfit(item.retailerProfit)}
-            </div>
-          ) : (
-            <div className="h-2" />
+        {/* RETAILER */}
+        <div className="p-1.5 flex flex-col items-center justify-center min-h-[58px]">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">
+            Retailer
+          </span>
+          <span className="font-mono font-black text-cyan-600 dark:text-cyan-400 text-sm sm:text-base mt-0.5">
+            {isPrivacyMode ? '••••' : formatCurrency(item.retailerPrice)}
+          </span>
+          {!isPrivacyMode && item.retailerProfit !== undefined && item.retailerProfit > 0 && (
+            <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
+              +{formatCurrency(item.retailerProfit)}
+            </span>
           )}
         </div>
 
-        {/* Customer */}
-        <div className="bg-emerald-50/70 dark:bg-emerald-950/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center flex flex-col justify-center min-h-[58px]">
-          <div className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">Customer</div>
-          <div className="font-price font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">
-            {formatCurrency(item.customerPrice)}
-          </div>
-          {!isPrivacyMode ? (
-            <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-              +{formatProfit(item.customerProfit)}
-            </div>
-          ) : (
-            <div className="h-2" />
+        {/* CUSTOMER */}
+        <div className="p-1.5 flex flex-col items-center justify-center min-h-[58px]">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">
+            Customer
+          </span>
+          <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm sm:text-base mt-0.5">
+            {isPrivacyMode ? '••••' : formatCurrency(item.customerPrice)}
+          </span>
+          {!isPrivacyMode && item.customerProfit !== undefined && item.customerProfit > 0 && (
+            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+              +{formatCurrency(item.customerProfit)}
+            </span>
           )}
         </div>
       </div>

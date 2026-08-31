@@ -254,20 +254,20 @@ export default function DashboardPage() {
                   <div
                     key={item.id}
                     onClick={() => router.push(`/items/${item.id}`)}
-                    className="bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-2 cursor-pointer hover:border-emerald-500/40 transition-all"
+                    className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 cursor-pointer hover:border-emerald-500/40 hover:shadow-md transition-all select-none"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm hover:text-emerald-600 dark:hover:text-emerald-400">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                           {item.name}
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex items-center gap-1.5 mt-1 text-xs">
                           {item.brand && (
-                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
                               {item.brand} •
                             </span>
                           )}
-                          <span className="text-[10px] text-slate-500">{item.category.name}</span>
+                          <span className="text-slate-500 dark:text-slate-400">{item.category?.name}</span>
                         </div>
                       </div>
                       <button
@@ -275,25 +275,35 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           setSelectedItemForEdit(item);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5 border border-emerald-200/60 dark:border-emerald-800/40 shrink-0 cursor-pointer shadow-2xs"
                       >
-                        <Edit3 className="w-3 h-3" />
+                        <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit</span>
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200 dark:border-slate-800/80 text-xs text-center">
-                      <div className="bg-rose-50 dark:bg-rose-500/10 p-1 rounded-lg border border-rose-100 dark:border-rose-900/30">
-                        <span className="text-[9px] text-rose-700 dark:text-rose-400 font-black block uppercase">Cost</span>
-                        <span className="font-mono font-black text-rose-700 dark:text-rose-400">{formatCurrency(item.costPrice)}</span>
+                    <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-center items-center">
+                      <div className="bg-rose-50/80 dark:bg-rose-950/30 p-2 rounded-xl border border-rose-100 dark:border-rose-900/40 flex flex-col items-center justify-center">
+                        <span className="text-[10px] text-rose-700 dark:text-rose-400 font-black block uppercase tracking-wider">Cost</span>
+                        <span className="font-mono font-black text-rose-700 dark:text-rose-400 text-sm mt-0.5">{formatCurrency(item.costPrice)}</span>
                       </div>
-                      <div>
-                        <span className="text-[9px] text-slate-500 block font-medium">Retailer</span>
-                        <span className="font-mono font-bold text-cyan-700 dark:text-cyan-400">{formatCurrency(item.retailerPrice)}</span>
+                      <div className="p-1.5 flex flex-col items-center justify-center">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">Retailer</span>
+                        <span className="font-mono font-black text-cyan-600 dark:text-cyan-400 text-sm mt-0.5">{formatCurrency(item.retailerPrice)}</span>
+                        {item.retailerProfit !== undefined && item.retailerProfit > 0 && (
+                          <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
+                            +{formatCurrency(item.retailerProfit)}
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <span className="text-[9px] text-slate-500 block font-medium">Customer</span>
-                        <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">{formatCurrency(item.customerPrice)}</span>
+                      <div className="p-1.5 flex flex-col items-center justify-center">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">Customer</span>
+                        <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">{formatCurrency(item.customerPrice)}</span>
+                        {item.customerProfit !== undefined && item.customerProfit > 0 && (
+                          <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            +{formatCurrency(item.customerProfit)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
