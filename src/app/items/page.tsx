@@ -281,7 +281,6 @@ function ItemCard({
   );
 }
 
-// ─── Recursive Category Section with Multi-Tier Solid Sticky Stacking ─────────
 interface CategoryNode {
   id: string;
   name: string;
@@ -315,39 +314,35 @@ function CategorySection({
 
   return (
     <div
-      className={`rounded-2xl border transition-all overflow-hidden ${
+      className={`rounded-2xl border transition-all ${
         depth === 0
-          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 shadow-xs'
+          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 shadow-xs'
           : depth === 1
-          ? 'bg-slate-50/80 dark:bg-slate-950/40 border-slate-200/80 dark:border-slate-800/80'
+          ? 'bg-slate-50/80 dark:bg-slate-950/60 border-slate-200/80 dark:border-slate-800/80'
           : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
       }`}
     >
-      {/* Solid Sticky Locking Header (Items pass underneath cleanly without clipping) */}
+      {/* Category Accordion Header Button */}
       <button
         type="button"
         onClick={() => onToggleCollapse(node.id)}
-        className={`w-full sticky ${
+        className={`w-full flex items-center justify-between transition-colors text-left select-none cursor-pointer ${
+          isCollapsed ? 'rounded-2xl' : 'rounded-t-2xl border-b'
+        } ${
           depth === 0
-            ? 'top-[48px] md:top-[52px] z-12 bg-white/95 dark:bg-slate-900/95 border-b border-slate-200/90 dark:border-slate-800'
+            ? 'px-3.5 py-3 sm:px-4 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border-slate-200/90 dark:border-slate-800'
             : depth === 1
-            ? 'top-[90px] md:top-[96px] z-11 bg-slate-50/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80'
-            : 'top-[128px] md:top-[136px] z-10 bg-emerald-50/95 dark:bg-emerald-950/95 border-b border-emerald-200/50 dark:border-emerald-900/30'
-        } backdrop-blur-md flex items-center justify-between transition-all text-left select-none shadow-2xs ${
-          depth === 0
-            ? 'px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-slate-50 dark:hover:bg-slate-850'
-            : depth === 1
-            ? 'px-3 py-2 sm:px-3.5 sm:py-2.5 hover:bg-slate-100 dark:hover:bg-slate-850'
-            : 'px-3 py-1.5 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30'
+            ? 'px-3 py-2.5 sm:px-3.5 sm:py-3 bg-slate-100/80 dark:bg-slate-950/80 hover:bg-slate-200/70 dark:hover:bg-slate-900 border-slate-200/80 dark:border-slate-800/80'
+            : 'px-3 py-2 sm:px-3 sm:py-2.5 bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 border-emerald-200/50 dark:border-emerald-900/30'
         }`}
       >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {/* Chevron Indicator */}
           <div className="shrink-0 text-slate-400">
             {isCollapsed ? (
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-500 transition-transform" />
             ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 transition-transform" />
+              <ChevronDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400 transition-transform" />
             )}
           </div>
 

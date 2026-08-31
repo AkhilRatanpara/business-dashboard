@@ -26,11 +26,16 @@ export async function GET(req: NextRequest) {
     };
 
     if (categoryId) {
-      const subCategories = await prisma.category.findMany({
-        where: { parentId: categoryId },
-        select: { id: true },
+      // Recursively fetch all subcategories and sub-subcategories (multi-tier support)
+      const allCategories = await prisma.category.findMany({
+        select: { id: true, parentId: true },
       });
-      const categoryIds = [categoryId, ...subCategories.map((s) => s.id)];
+      const getDescendantIds = (parentId: string): string[] => {
+        const directChildren = allCategories.filter((c) => c.parentId === parentId).map((c) => c.id);
+        const furtherChildren = directChildren.flatMap((id) => getDescendantIds(id));
+        return [parentId, ...directChildren, ...furtherChildren];
+      };
+      const categoryIds = Array.from(new Set(getDescendantIds(categoryId)));
       where.categoryId = {
         in: categoryIds,
       };
