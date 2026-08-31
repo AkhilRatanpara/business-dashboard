@@ -42,6 +42,11 @@ function getFormattedDate(date?: string) {
   return `${dd}-${mm}-${yyyy}`;
 }
 
+function formatPdfPrice(price: number): string {
+  if (!price || price <= 0) return '—';
+  return `Rs. ${price.toLocaleString('en-IN', { minimumFractionDigits: price % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
+}
+
 export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceListModalProps) {
   const [catalogType, setCatalogType] = useState<'customer' | 'retailer' | 'complete'>('customer');
   const [selectedCatId, setSelectedCatId] = useState<string>('all');
@@ -63,7 +68,6 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
   const filteredItems = items.filter((item) => {
     if (selectedCatId === 'all') return true;
     if (item.category.id === selectedCatId || item.category.parentId === selectedCatId) return true;
-    // Check if item belongs to a descendant of selectedCatId
     const cat = categories.find((c) => c.id === item.category.id);
     return cat?.parentId === selectedCatId;
   });
@@ -73,7 +77,7 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
       ? 'All Categories Catalog'
       : categories.find((c) => c.id === selectedCatId)?.name || 'Custom Category';
 
-  // Build high quality jsPDF document
+  // Build ultra-premium jsPDF document
   const generatePdfDoc = (): jsPDF => {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -83,10 +87,10 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
 
     const catalogLabel =
       catalogType === 'customer'
-        ? 'Customer Price List'
+        ? 'CUSTOMER PRICE LIST'
         : catalogType === 'retailer'
-        ? 'Retailer Price List'
-        : 'Complete Price Catalog (Confidential)';
+        ? 'RETAILER / DEALER PRICE LIST'
+        : 'CONFIDENTIAL COMPLETE CATALOG';
 
     const displayDate = useDateSnapshot ? getFormattedDate(snapshotDate) : dateStr;
 
@@ -112,15 +116,11 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
     } else {
       const selected = categories.find((c) => c.id === selectedCatId);
       if (selected) {
-        if (!selected.parentId) {
-          rootsToPrint = [selected];
-        } else {
-          rootsToPrint = [selected];
-        }
+        rootsToPrint = [selected];
       }
     }
 
-    // Sort items naturally
+    // Natural numerical sorting for item codes and serial numbers
     const naturalSort = (a: Item, b: Item) => {
       if (a.srNo && b.srNo) {
         const numA = parseFloat(a.srNo);
@@ -138,24 +138,30 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
     const showRetailer = catalogType === 'retailer' || catalogType === 'complete';
     const showCustomer = catalogType === 'customer' || catalogType === 'complete';
 
-    const tableColumns = [
-      { header: 'Sr.', dataKey: 'srNo' },
-      { header: 'Item Name & Specification', dataKey: 'name' },
-      { header: 'Company', dataKey: 'brand' },
-      { header: 'Code', dataKey: 'itemCode' },
-      ...(showCost ? [{ header: 'Cost (₹)', dataKey: 'cost' }] : []),
-      ...(showRetailer ? [{ header: 'Retailer (₹)', dataKey: 'retailer' }] : []),
-      ...(showCustomer ? [{ header: 'Customer (₹)', dataKey: 'customer' }] : []),
+    const tableColumns: { header: string; dataKey: string }[] = [
+      { header: 'SR.', dataKey: 'srNo' },
+      { header: 'ITEM NAME & SPECIFICATION', dataKey: 'name' },
+      { header: 'COMPANY', dataKey: 'brand' },
+      { header: 'CODE', dataKey: 'itemCode' },
     ];
 
-    // Build row data with category section headers
+    if (showCost) {
+      tableColumns.push({ header: 'COST PRICE', dataKey: 'cost' });
+    }
+    if (showRetailer) {
+      tableColumns.push({ header: 'RETAILER RATE', dataKey: 'retailer' });
+    }
+    if (showCustomer) {
+      tableColumns.push({ header: 'CUSTOMER RATE', dataKey: 'customer' });
+    }
+
+    // Build structured table body
     const tableBody: any[] = [];
 
     rootsToPrint.forEach((root) => {
       const directItems = filteredItems.filter((i) => i.category.id === root.id).sort(naturalSort);
       const subCats = subMap.get(root.id) || [];
 
-      // Check if root or any subcategory has matching items
       const subCatItemCounts = subCats.map((sub) => ({
         sub,
         items: filteredItems.filter((i) => i.category.id === sub.id).sort(naturalSort),
@@ -164,16 +170,17 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
       const totalItemsUnderRoot = directItems.length + subCatItemCounts.reduce((acc, s) => acc + s.items.length, 0);
       if (totalItemsUnderRoot === 0) return;
 
-      // 1. Root Category Banner Row
+      // 1. Root Category Banner
       tableBody.push([
         {
-          content: `${root.name.toUpperCase()} (${totalItemsUnderRoot} items)`,
+          content: `${root.name.toUpperCase()}  [ Total: ${totalItemsUnderRoot} items ]`,
           colSpan: tableColumns.length,
           styles: {
             fillColor: [15, 23, 42], // Slate 900
             textColor: [255, 255, 255],
             fontStyle: 'bold',
-            fontSize: 10,
+            fontSize: 9.5,
+            cellPadding: { top: 6, bottom: 6, left: 10, right: 10 },
             halign: 'left',
           },
         },
@@ -187,26 +194,27 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
           brand: item.brand || '—',
           itemCode: item.itemCode || '—',
         };
-        if (showCost) row.cost = item.costPrice > 0 ? `₹${item.costPrice.toLocaleString('en-IN')}` : '—';
-        if (showRetailer) row.retailer = item.retailerPrice > 0 ? `₹${item.retailerPrice.toLocaleString('en-IN')}` : '—';
-        if (showCustomer) row.customer = item.customerPrice > 0 ? `₹${item.customerPrice.toLocaleString('en-IN')}` : '—';
+        if (showCost) row.cost = formatPdfPrice(item.costPrice);
+        if (showRetailer) row.retailer = formatPdfPrice(item.retailerPrice);
+        if (showCustomer) row.customer = formatPdfPrice(item.customerPrice);
         tableBody.push(row);
       });
 
-      // 2. Subcategory Sections
+      // 2. Subcategories
       subCatItemCounts.forEach(({ sub, items: subItems }) => {
         if (subItems.length === 0) return;
 
-        // Subcategory Section Divider Row
+        // Subcategory Section Divider
         tableBody.push([
           {
-            content: `   📁  ${sub.name} (${subItems.length} items)`,
+            content: `>>  ${sub.name.toUpperCase()}  (${subItems.length} items)`,
             colSpan: tableColumns.length,
             styles: {
               fillColor: [241, 245, 249], // Slate 100
               textColor: [30, 41, 59], // Slate 800
               fontStyle: 'bold',
-              fontSize: 9,
+              fontSize: 8.5,
+              cellPadding: { top: 5, bottom: 5, left: 14, right: 10 },
               halign: 'left',
             },
           },
@@ -219,15 +227,15 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
             brand: item.brand || '—',
             itemCode: item.itemCode || '—',
           };
-          if (showCost) row.cost = item.costPrice > 0 ? `₹${item.costPrice.toLocaleString('en-IN')}` : '—';
-          if (showRetailer) row.retailer = item.retailerPrice > 0 ? `₹${item.retailerPrice.toLocaleString('en-IN')}` : '—';
-          if (showCustomer) row.customer = item.customerPrice > 0 ? `₹${item.customerPrice.toLocaleString('en-IN')}` : '—';
+          if (showCost) row.cost = formatPdfPrice(item.costPrice);
+          if (showRetailer) row.retailer = formatPdfPrice(item.retailerPrice);
+          if (showCustomer) row.customer = formatPdfPrice(item.customerPrice);
           tableBody.push(row);
         });
       });
     });
 
-    // If no categorized items matched, list raw filtered items
+    // Fallback if no categorized items matched
     if (tableBody.length === 0) {
       filteredItems.sort(naturalSort).forEach((item) => {
         const row: any = {
@@ -236,88 +244,119 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
           brand: item.brand || '—',
           itemCode: item.itemCode || '—',
         };
-        if (showCost) row.cost = item.costPrice > 0 ? `₹${item.costPrice.toLocaleString('en-IN')}` : '—';
-        if (showRetailer) row.retailer = item.retailerPrice > 0 ? `₹${item.retailerPrice.toLocaleString('en-IN')}` : '—';
-        if (showCustomer) row.customer = item.customerPrice > 0 ? `₹${item.customerPrice.toLocaleString('en-IN')}` : '—';
+        if (showCost) row.cost = formatPdfPrice(item.costPrice);
+        if (showRetailer) row.retailer = formatPdfPrice(item.retailerPrice);
+        if (showCustomer) row.customer = formatPdfPrice(item.customerPrice);
         tableBody.push(row);
       });
     }
+
+    // Column widths based on layout
+    const numPriceCols = (showCost ? 1 : 0) + (showRetailer ? 1 : 0) + (showCustomer ? 1 : 0);
+    const priceColWidth = numPriceCols === 3 ? 65 : numPriceCols === 2 ? 75 : 85;
 
     // Render Table using autoTable
     autoTable(doc, {
       columns: tableColumns,
       body: tableBody,
-      startY: 85,
-      margin: { top: 85, bottom: 40, left: 30, right: 30 },
+      startY: 86,
+      margin: { top: 86, bottom: 36, left: 24, right: 24 },
       theme: 'grid',
       styles: {
-        fontSize: 8.5,
-        cellPadding: 4,
+        fontSize: 8,
+        font: 'helvetica',
+        cellPadding: { top: 4.5, bottom: 4.5, left: 5, right: 5 },
         valign: 'middle',
-        lineColor: [226, 232, 240],
+        lineColor: [226, 232, 240], // Slate 200
         lineWidth: 0.5,
+        textColor: [30, 41, 59], // Slate 800
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252], // Slate 50
       },
       headStyles: {
-        fillColor: [16, 185, 129], // Emerald 500
+        fillColor: [30, 41, 59], // Slate 800
         textColor: [255, 255, 255],
-        fontSize: 9,
+        fontSize: 8,
         fontStyle: 'bold',
         halign: 'center',
+        cellPadding: { top: 6, bottom: 6, left: 4, right: 4 },
       },
       columnStyles: {
-        srNo: { halign: 'center', cellWidth: 35, fontStyle: 'bold' },
+        srNo: { halign: 'center', cellWidth: 32, fontStyle: 'bold' },
         name: { halign: 'left', fontStyle: 'bold' },
-        brand: { halign: 'center', cellWidth: 70 },
-        itemCode: { halign: 'center', cellWidth: 55 },
-        cost: { halign: 'right', cellWidth: 65, fontStyle: 'bold', textColor: [220, 38, 38] },
-        retailer: { halign: 'right', cellWidth: 70, fontStyle: 'bold', textColor: [8, 145, 178] },
-        customer: { halign: 'right', cellWidth: 75, fontStyle: 'bold', textColor: [5, 150, 105] },
+        brand: { halign: 'center', cellWidth: 62, textColor: [71, 85, 105] },
+        itemCode: { halign: 'center', cellWidth: 48, textColor: [100, 116, 139] },
+        ...(showCost ? { cost: { halign: 'right', cellWidth: priceColWidth, fontStyle: 'bold', textColor: [220, 38, 38] } } : {}),
+        ...(showRetailer ? { retailer: { halign: 'right', cellWidth: priceColWidth, fontStyle: 'bold', textColor: [8, 145, 178] } } : {}),
+        ...(showCustomer ? { customer: { halign: 'right', cellWidth: priceColWidth, fontStyle: 'bold', textColor: [5, 150, 105] } } : {}),
       },
-      didDrawPage: (data) => {
-        // Top Header Banner
-        doc.setFillColor(15, 23, 42); // Slate 900
-        doc.rect(30, 20, doc.internal.pageSize.getWidth() - 60, 52, 'F');
+      didDrawPage: () => {
+        const pageWidth = doc.internal.pageSize.getWidth();
 
-        // Shop Name
+        // 1. Premium Top Header Bar
+        doc.setFillColor(15, 23, 42); // Deep Slate Navy
+        doc.rect(24, 16, pageWidth - 48, 56, 'F');
+
+        // Emerald Brand Accent Top Line
+        doc.setFillColor(16, 185, 129); // Emerald 500
+        doc.rect(24, 16, pageWidth - 48, 3, 'F');
+
+        // Business Title
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
+        doc.setFontSize(13);
         doc.setFont('helvetica', 'bold');
-        doc.text('GUNATIT SUBMERSIBLE', 42, 40);
+        doc.text('GUNATIT SUBMERSIBLE', 36, 38);
 
         // Subtitle & Contact
-        doc.setFontSize(8);
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184); // Slate 400
-        doc.text('Pump Spares & Repair Price Directory • 📞 9925531065', 42, 54);
+        doc.text('PUMP SPARES & INDUSTRIAL REPAIR PRICE DIRECTORY   |   MOB: +91 9925531065', 36, 52);
 
-        // Catalog Type Badge & Date
-        doc.setFontSize(9);
+        // Right Catalog Type Badge
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(52, 211, 153); // Emerald 400
-        doc.text(catalogLabel, doc.internal.pageSize.getWidth() - 42, 40, { align: 'right' });
+        doc.text(catalogLabel, pageWidth - 36, 38, { align: 'right' });
 
-        doc.setFontSize(8);
+        // Date & Count Info
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(203, 213, 225); // Slate 300
-        doc.text(`Date: ${displayDate} • Items: ${filteredItems.length}`, doc.internal.pageSize.getWidth() - 42, 54, { align: 'right' });
-
-        // Bottom Footer
-        const pageHeight = doc.internal.pageSize.getHeight();
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(148, 163, 184);
-        doc.text(
-          'Gunatit Submersible • 9925531065 • Confidential Price Book',
-          30,
-          pageHeight - 20
-        );
-
-        const pageNumText = `Page ${data.pageNumber} of ${doc.getNumberOfPages()}`;
-        doc.text(pageNumText, doc.internal.pageSize.getWidth() - 30, pageHeight - 20, {
-          align: 'right',
-        });
+        doc.text(`REF DATE: ${displayDate}   |   ITEMS: ${filteredItems.length}`, pageWidth - 36, 52, { align: 'right' });
       },
     });
+
+    // 2-Pass Footer to accurately compute total pages
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+
+      // Footer Divider Line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(24, pageHeight - 24, pageWidth - 24, pageHeight - 24);
+
+      // Left Footer text
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184); // Slate 400
+      doc.text(
+        'GUNATIT SUBMERSIBLE  •  MOB: +91 9925531065  •  CONFIDENTIAL PRICE BOOK',
+        24,
+        pageHeight - 12
+      );
+
+      // Right Footer text with accurate Page X of Y
+      const pageNumText = `PAGE ${i} OF ${totalPages}`;
+      doc.text(pageNumText, pageWidth - 24, pageHeight - 12, {
+        align: 'right',
+      });
+    }
 
     return doc;
   };
@@ -365,7 +404,6 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
         notify('Shared PDF successfully!', 'success');
         onClose();
       } else {
-        // Fallback for browsers that don't support file sharing: download directly
         doc.save(filename);
         notify('Direct file sharing not supported on this browser. PDF downloaded instead.', 'info');
       }
@@ -508,7 +546,7 @@ export function PdfPriceListModal({ items, categories = [], onClose }: PdfPriceL
             </div>
             <div className="text-right">
               <p className="text-[10px] text-slate-400 font-mono">Format</p>
-              <p className="text-[11px] font-black text-emerald-400 font-mono">Direct A4 PDF</p>
+              <p className="text-[11px] font-black text-emerald-400 font-mono">Executive A4 PDF</p>
             </div>
           </div>
         </div>
