@@ -103,8 +103,8 @@ function ItemRow({
       onClick={() => onNavigate(item.id)}
       className="hover:bg-slate-50/90 dark:hover:bg-slate-950/40 border-b border-slate-100 dark:border-slate-800/60 cursor-pointer transition-colors group"
     >
-      {/* Mobile-Friendly Vertical Item Column */}
-      <td className="py-2.5 px-3 sm:px-4">
+      {/* Mobile-Friendly Vertical Item Column with slightly increased width */}
+      <td className="py-2.5 px-3 sm:px-4 min-w-[135px] sm:min-w-[200px]">
         <div className="flex flex-col items-start gap-1">
           {item.srNo && (
             <span className="inline-flex rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -491,7 +491,7 @@ function CategorySection({
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/90 dark:bg-slate-950/60 border-b border-slate-200/80 dark:border-slate-800 text-center">
-                    <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-left">Item & Company</th>
+                    <th className="py-2.5 px-3 sm:px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-left min-w-[135px] sm:min-w-[200px]">Item & Company</th>
                     <th className="py-2.5 px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:table-cell text-center">Code</th>
                     <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 text-center">Cost</th>
                     <th className="py-2.5 px-2 sm:px-4 text-[11px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 text-center">Retailer</th>
@@ -579,9 +579,9 @@ function ItemsContent() {
       setIsPrivacyMode(true);
     }
 
-    const cachedItems = sessionStorage.getItem('gunatit_cached_items_v2');
-    const cachedCats = sessionStorage.getItem('gunatit_cached_cats_v2');
-    const cachedBrands = sessionStorage.getItem('gunatit_cached_brands_v2');
+    const cachedItems = sessionStorage.getItem('gunatit_cached_items_v3');
+    const cachedCats = sessionStorage.getItem('gunatit_cached_cats_v3');
+    const cachedBrands = sessionStorage.getItem('gunatit_cached_brands_v3');
 
     if (cachedItems) {
       try {
@@ -690,11 +690,11 @@ function ItemsContent() {
         const brandsData = await brandsRes.json();
         if (catsData.success) {
           setCategories(catsData.categories);
-          sessionStorage.setItem('gunatit_cached_cats_v2', JSON.stringify(catsData.categories));
+          sessionStorage.setItem('gunatit_cached_cats_v3', JSON.stringify(catsData.categories));
         }
         if (brandsData.success) {
           setBrands(brandsData.brands);
-          sessionStorage.setItem('gunatit_cached_brands_v2', JSON.stringify(brandsData.brands));
+          sessionStorage.setItem('gunatit_cached_brands_v3', JSON.stringify(brandsData.brands));
         }
       } catch (err) {
         console.error('Failed to load categories/brands:', err);
@@ -717,7 +717,7 @@ function ItemsContent() {
       const data = await res.json();
       if (data.success) {
         setItems(data.items);
-        sessionStorage.setItem('gunatit_cached_items_v2', JSON.stringify(data.items));
+        sessionStorage.setItem('gunatit_cached_items_v3', JSON.stringify(data.items));
       }
     } catch (err) {
       console.error('Failed to fetch items:', err);
