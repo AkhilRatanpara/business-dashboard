@@ -39,7 +39,7 @@ export function ModernDropdown({
   disabledPlaceholder,
   icon,
   onAddNew,
-  addNewText = '+ Add New',
+  addNewText = 'New',
   searchable = true,
   className,
 }: ModernDropdownProps) {
@@ -94,7 +94,7 @@ export function ModernDropdown({
   };
 
   return (
-    <div className={cn('space-y-1.5 relative', className)} ref={dropdownRef}>
+    <div className={cn('space-y-1.5 relative', isOpen ? 'z-50' : 'z-10', className)} ref={dropdownRef}>
       {/* Label and Add New Button */}
       {(label || onAddNew) && (
         <div className="flex items-center justify-between">
@@ -109,10 +109,10 @@ export function ModernDropdown({
             <button
               type="button"
               onClick={onAddNew}
-              className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 hover:underline flex items-center gap-1 transition-colors"
+              className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
-              <span>{addNewText}</span>
+              <span>{addNewText.startsWith('+') ? addNewText.slice(1).trim() : addNewText}</span>
             </button>
           )}
         </div>
@@ -274,23 +274,6 @@ export function ModernDropdown({
               })
             )}
           </div>
-
-          {/* Quick Create Action at Bottom */}
-          {onAddNew && (
-            <div className="p-2 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-950/70">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onAddNew();
-                }}
-                className="w-full py-1.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 border border-emerald-200/80 dark:border-emerald-800/50 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{addNewText}</span>
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -418,14 +418,15 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
     if (e) e.preventDefault();
     setError('');
 
-    const targetCategoryId = subSubCategoryId || subCategoryId || parentCategoryId;
+    let targetCategoryId = subSubCategoryId || subCategoryId || parentCategoryId;
     if (!name.trim()) {
       setError('Item Name is required.');
       return;
     }
     if (!targetCategoryId) {
-      setError('Please select a category.');
-      return;
+      // Auto-fallback to "Other" category if left unselected
+      const otherCat = categories.find((c) => c.name.toLowerCase() === 'other' || c.name.toLowerCase() === 'others' || c.id === 'other');
+      targetCategoryId = otherCat ? otherCat.id : 'other';
     }
 
     if (numCost < 0 || numRetailer < 0 || numCustomer < 0) {
@@ -589,7 +590,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
 
       <form onSubmit={(e) => handleSubmit(e, 'save')} className="space-y-6">
         {/* ─── SECTION 1: CATEGORY SELECTION ─────────────────────────────────── */}
-        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-4">
+        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-4 relative z-30 overflow-visible">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-sm">
               <FolderTree className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -602,13 +603,12 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
             {/* L1 Main Parent Category */}
             <ModernDropdown
               label="Main Category (L1)"
-              required
               icon={<Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
-              placeholder="Select Main Category"
+              placeholder="Select Category (Optional - Default: Other)"
               value={parentCategoryId}
               onChange={handleParentChange}
               onAddNew={() => setShowAddParentModal(true)}
-              addNewText="+ New Category"
+              addNewText="New Category"
               options={parentCategories.map((cat) => ({
                 value: cat.id,
                 label: cat.name,
@@ -626,7 +626,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
               value={subCategoryId}
               onChange={handleSubChange}
               onAddNew={parentCategoryId ? () => setShowAddSubModal(true) : undefined}
-              addNewText="+ New Subcategory"
+              addNewText="New Subcategory"
               options={subCategories.map((cat) => ({
                 value: cat.id,
                 label: cat.name,
@@ -644,7 +644,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
               value={subSubCategoryId}
               onChange={setSubSubCategoryId}
               onAddNew={subCategoryId ? () => setShowAddSubSubModal(true) : undefined}
-              addNewText="+ New Sub-Sub"
+              addNewText="New Sub-Sub"
               options={subSubCategories.map((cat) => ({
                 value: cat.id,
                 label: cat.name,
@@ -655,7 +655,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
         </div>
 
         {/* ─── SECTION 2: BASIC PRODUCT INFORMATION & AUTO-SUGGEST ────────────── */}
-        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-4">
+        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-4 relative z-20 overflow-visible">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-sm">
               <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -827,7 +827,8 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
         </div>
 
         {/* ─── SECTION 3: PRICING & MARGIN ANALYSIS ───────────────────────────── */}
-        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-5">
+        {/* ─── SECTION 3: PRICING & MARGIN ANALYSIS ───────────────────────────── */}
+        <div className="glass-card rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-xs space-y-5 relative z-10 overflow-visible">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60">
             <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-sm">
               <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -959,7 +960,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
                 type="button"
                 disabled={deleting || saving || savingNew}
                 onClick={handleDelete}
-                className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/40 text-xs font-bold transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{deleting ? 'Deleting...' : 'Delete Item'}</span>
@@ -976,25 +977,13 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
               Cancel
             </Link>
 
-            {mode === 'create' && (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={(e) => handleSubmit(e, 'saveAndAddAnother')}
-                className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
-              >
-                <PlusCircle className="w-4 h-4 text-emerald-500" />
-                <span>Save & Add Another</span>
-              </button>
-            )}
-
-            {/* In Edit Mode: 2 Clear Buttons as requested */}
+            {/* In Edit Mode: 3 Buttons (Cancel, Save & Create New, Save Changes) */}
             {mode === 'edit' && (
               <button
                 type="button"
                 disabled={saving || savingNew}
                 onClick={(e) => handleSubmit(e, 'saveAsNew')}
-                className="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                 title="Create a brand new item in database with above details (preserves original item)"
               >
                 <FilePlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -1002,10 +991,11 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
               </button>
             )}
 
+            {/* Main Action Button */}
             <button
               type="submit"
               disabled={saving || savingNew}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{saving ? 'Saving...' : (mode === 'edit' ? 'Save Changes' : 'Create Item')}</span>
