@@ -577,9 +577,9 @@ function ItemsContent() {
       setIsPrivacyMode(true);
     }
 
-    const cachedItems = sessionStorage.getItem('gunatit_cached_items');
-    const cachedCats = sessionStorage.getItem('gunatit_cached_cats');
-    const cachedBrands = sessionStorage.getItem('gunatit_cached_brands');
+    const cachedItems = sessionStorage.getItem('gunatit_cached_items_v2');
+    const cachedCats = sessionStorage.getItem('gunatit_cached_cats_v2');
+    const cachedBrands = sessionStorage.getItem('gunatit_cached_brands_v2');
 
     if (cachedItems) {
       try {
@@ -688,11 +688,11 @@ function ItemsContent() {
         const brandsData = await brandsRes.json();
         if (catsData.success) {
           setCategories(catsData.categories);
-          sessionStorage.setItem('gunatit_cached_cats', JSON.stringify(catsData.categories));
+          sessionStorage.setItem('gunatit_cached_cats_v2', JSON.stringify(catsData.categories));
         }
         if (brandsData.success) {
           setBrands(brandsData.brands);
-          sessionStorage.setItem('gunatit_cached_brands', JSON.stringify(brandsData.brands));
+          sessionStorage.setItem('gunatit_cached_brands_v2', JSON.stringify(brandsData.brands));
         }
       } catch (err) {
         console.error('Failed to load categories/brands:', err);
@@ -715,7 +715,7 @@ function ItemsContent() {
       const data = await res.json();
       if (data.success) {
         setItems(data.items);
-        sessionStorage.setItem('gunatit_cached_items', JSON.stringify(data.items));
+        sessionStorage.setItem('gunatit_cached_items_v2', JSON.stringify(data.items));
       }
     } catch (err) {
       console.error('Failed to fetch items:', err);
