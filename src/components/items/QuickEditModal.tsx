@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, TrendingUp, Pencil, Tag, FolderTree } from 'lucide-react';
+import { X, Check, TrendingUp, Pencil, Tag, FolderTree, Building2, Layers } from 'lucide-react';
 import { formatCurrency, calculateProfit, calculateMarkupPercent } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
@@ -9,6 +9,8 @@ interface QuickEditModalProps {
   item: {
     id: string;
     name: string;
+    srNo?: string | null;
+    brand?: string | null;
     costPrice: number;
     retailerPrice: number;
     customerPrice: number;
@@ -36,15 +38,17 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
   // Details editing state (toggled by pencil icon)
   const [showDetails, setShowDetails] = useState(false);
   const [name, setName] = useState(item.name);
-  const [brand, setBrand] = useState('');
+  const [srNo, setSrNo] = useState(item.srNo || '');
+  const [brand, setBrand] = useState(item.brand || '');
   const [modelNumber, setModelNumber] = useState('');
   const [unit, setUnit] = useState(item.unit || 'pcs');
   const [notes, setNotes] = useState('');
   const [parentCategoryId, setParentCategoryId] = useState('');
   const [subCategoryId, setSubCategoryId] = useState('');
 
-  // Categories list
+  // Categories & Brands list
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
   const [fetchingDetails, setFetchingDetails] = useState(false);
 
   // Fetch full item details & categories list on mount
@@ -52,21 +56,28 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
     async function loadMetadata() {
       setFetchingDetails(true);
       try {
-        const [itemRes, catsRes] = await Promise.all([
+        const [itemRes, catsRes, brandsRes] = await Promise.all([
           fetch(`/api/items/${item.id}`, { cache: 'no-store' }),
           fetch('/api/categories', { cache: 'no-store' }),
+          fetch('/api/brands', { cache: 'no-store' }),
         ]);
 
         const itemData = await itemRes.json();
         const catsData = await catsRes.json();
+        const brandsData = await brandsRes.json();
 
         if (catsData.success) {
           setCategories(catsData.categories);
         }
 
+        if (brandsData.success) {
+          setBrands(brandsData.brands);
+        }
+
         if (itemData.success) {
           const detail = itemData.item;
           setName(detail.name || '');
+          setSrNo(detail.srNo || '');
           setBrand(detail.brand || '');
           setModelNumber(detail.modelNumber || '');
           setUnit(detail.unit || 'pcs');
@@ -116,7 +127,6 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
     setSaving(true);
     setError('');
 
-    // Selected leaf categoryId
     const finalCategoryId = showDetails ? (subCategoryId || parentCategoryId) : undefined;
 
     try {
@@ -130,6 +140,7 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
           changeNote: note || (showDetails ? 'Item details & prices updated' : 'Quick price update'),
           ...(showDetails ? {
             name: name.trim(),
+            srNo: srNo.trim() || null,
             brand: brand.trim() || null,
             modelNumber: modelNumber.trim() || null,
             unit: unit.trim(),
@@ -141,13 +152,13 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
 
       const data = await res.json();
       if (data.success) {
-        notify(`Updated master record for "${name}"`, 'success');
+        notify(`Updated "${name}"`, 'success');
         onSave();
         onClose();
       } else {
         setError(data.message || 'Failed to update item details');
       }
-    } catch (err) {
+    } catch {
       setError('Network error updating item.');
     } finally {
       setSaving(false);
@@ -158,242 +169,223 @@ export function QuickEditModal({ item, onClose, onSave }: QuickEditModalProps) {
   const subCategories = categories.filter((c) => c.parentId === parentCategoryId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-955/80 backdrop-blur-md p-0 sm:p-4">
-      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 overflow-hidden animate-in slide-in-from-bottom duration-200 max-h-[95vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
-          <div className="min-w-0 flex-1 mr-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fade-in">
+      <div className="glass-card w-full max-w-lg rounded-2xl p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl space-y-5">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                {showDetails ? 'Full Edit Mode' : 'Quick Price Edit'}
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-900/60">
+                Quick Edit
               </span>
-              <button
-                type="button"
-                onClick={() => setShowDetails(!showDetails)}
-                className={`p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-                  showDetails ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
-                }`}
-                title={showDetails ? 'Show prices only' : 'Edit item details like name/make'}
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
+              {brand && (
+                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                  {brand}
+                </span>
+              )}
             </div>
-            <h3 className="text-base font-black text-slate-900 dark:text-slate-100 mt-1 truncate">{name}</h3>
+            <h2 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight mt-1 line-clamp-1">
+              {name}
+            </h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 p-3 rounded-xl border border-rose-200 dark:border-rose-500/20 animate-in fade-in">
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Price Inputs Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Cost Price */}
-            <div className="bg-rose-50/60 dark:bg-slate-950/60 p-3 rounded-2xl border border-rose-200 dark:border-slate-800">
-              <label className="block text-xs font-bold text-rose-700 dark:text-rose-400 mb-1">Cost Price (₹)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 font-black text-base focus:outline-none focus:border-rose-500"
-                required
-              />
-            </div>
-
-            {/* Retailer Price */}
-            <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <label className="block text-xs font-bold text-cyan-700 dark:text-cyan-400 mb-1">Retailer Price (₹)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={retailer}
-                onChange={(e) => setRetailer(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 font-black text-base focus:outline-none focus:border-cyan-500"
-                required
-              />
-            </div>
-
-            {/* Customer Price */}
-            <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-1">Customer Price (₹)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 font-black text-base focus:outline-none focus:border-emerald-500"
-                required
-              />
-            </div>
+          {/* Toggle Full Details Editor */}
+          <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-slate-800/80">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Full Item Specifications</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowDetails(!showDetails)}
+              className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                showDetails
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750'
+              }`}
+            >
+              <Pencil className="w-3 h-3" />
+              <span>{showDetails ? 'Hide Specs' : 'Edit Specs'}</span>
+            </button>
           </div>
 
-          {/* Live Calculated Profits Preview */}
-          <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-600 dark:text-slate-400 font-semibold">Retailer Profit:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-cyan-700 dark:text-cyan-400">{formatCurrency(retailerProfit)}</span>
-                <span className="text-[10px] bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 px-1.5 py-0.5 rounded font-mono font-bold">
-                  {retailerMarkup}% markup
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-600 dark:text-slate-400 font-semibold">Customer Profit:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(customerProfit)}</span>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">
-                  {customerMarkup}% markup
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* ─── DETAILED EDITING FIELD ACCORDION ─── */}
+          {/* Full Specifications Section */}
           {showDetails && (
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3 bg-slate-50 dark:bg-slate-950 animate-in slide-in-from-top-4 duration-200">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                <Pencil className="w-3 h-3 text-emerald-600" /> Item Details Specifications
-              </h4>
+            <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 space-y-3 animate-fade-in text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 dark:text-slate-300">Item Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold"
+                />
+              </div>
 
-              {fetchingDetails ? (
-                <p className="text-xs text-slate-400 italic">Syncing metadata from server…</p>
-              ) : (
-                <div className="space-y-3">
-                  {/* Name field */}
-                  <div>
-                    <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Item Name</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Category Dropdowns */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Main Category</label>
-                      <select
-                        value={parentCategoryId}
-                        onChange={(e) => handleParentChange(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none"
-                      >
-                        <option value="">Select Main...</option>
-                        {parentCategories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Subcategory</label>
-                      <select
-                        value={subCategoryId}
-                        onChange={(e) => setSubCategoryId(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none"
-                      >
-                        {subCategories.length === 0 ? (
-                          <option value="">No subcategories</option>
-                        ) : (
-                          <>
-                            <option value="">None (Link directly)</option>
-                            {subCategories.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Brand & Model */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Brand / Make</label>
-                      <input
-                        type="text"
-                        value={brand}
-                        onChange={(e) => setBrand(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Model / Specs</label>
-                      <input
-                        type="text"
-                        value={modelNumber}
-                        onChange={(e) => setModelNumber(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Unit & Notes */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Unit</label>
-                      <input
-                        type="text"
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-600 dark:text-slate-350 mb-0.5">Notes</label>
-                      <input
-                        type="text"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-905 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
-                      />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Sr. No.</label>
+                  <input
+                    type="text"
+                    value={srNo}
+                    onChange={(e) => setSrNo(e.target.value)}
+                    placeholder="1 or 1.1"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-mono font-bold"
+                  />
                 </div>
-              )}
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Company / Brand</label>
+                  <select
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-semibold"
+                  >
+                    <option value="">(No Brand / General)</option>
+                    {brands.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Category</label>
+                  <select
+                    value={parentCategoryId}
+                    onChange={(e) => handleParentChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                  >
+                    {parentCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Subcategory</label>
+                  <select
+                    value={subCategoryId}
+                    onChange={(e) => setSubCategoryId(e.target.value)}
+                    disabled={subCategories.length === 0}
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 disabled:opacity-50"
+                  >
+                    <option value="">(None / Direct to Main)</option>
+                    {subCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Reason for Change (Optional) */}
-          <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Reason for Price Change (Optional)</label>
+          {/* Pricing Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            {/* Cost */}
+            <div className="p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1.5">
+              <label className="text-[11px] font-bold text-rose-800 dark:text-rose-300 block">Cost (₹)</label>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                required
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 font-mono font-bold text-xs"
+              />
+            </div>
+
+            {/* Retailer */}
+            <div className="p-3 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/40 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-cyan-800 dark:text-cyan-300">Retailer (₹)</label>
+                {numCost > 0 && numRetailer > 0 && (
+                  <span className="text-[9px] font-mono font-bold text-cyan-700 dark:text-cyan-300">
+                    +{retailerMarkup.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={retailer}
+                onChange={(e) => setRetailer(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-900/60 font-mono font-bold text-xs"
+              />
+            </div>
+
+            {/* Customer */}
+            <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">Customer (₹)</label>
+                {numCost > 0 && numCustomer > 0 && (
+                  <span className="text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                    +{customerMarkup.toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={customer}
+                onChange={(e) => setCustomer(e.target.value)}
+                className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 font-mono font-bold text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Change Note */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Change Note (Optional)</label>
             <input
               type="text"
-              placeholder="e.g. Copper price revision"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+              placeholder="e.g. Rate revision from supplier"
+              className="w-full px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-2">
+          {/* Footer Actions */}
+          <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-300 text-sm font-semibold transition-all"
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-955 text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95"
             >
-              {saving ? 'Updating Neon DB...' : 'Save Changes'}
+              {saving ? 'Saving...' : 'Save Prices'}
             </button>
           </div>
         </form>

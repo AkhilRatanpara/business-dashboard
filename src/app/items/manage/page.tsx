@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, CheckSquare, Square, FolderX, AlertTriangle, X, Edit3, PlusCircle, ChevronDown, ChevronRight, Search, FolderPlus, FolderOpen, Tag, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Trash2, CheckSquare, Square, FolderX, AlertTriangle, X, Edit3, PlusCircle, ChevronDown, ChevronRight, Search, FolderPlus, FolderOpen, Tag, Eye, Building2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
 interface Item {
   id: string;
   name: string;
+  srNo?: string | null;
   itemCode?: string | null;
   brand?: string | null;
   modelNumber?: string | null;
@@ -106,18 +108,41 @@ export default function ManageItemsPage() {
     loadData();
   }, [loadData]);
 
+  // Category map for fast multi-level lookup
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
+
+  const isDescendantOf = (catId: string, ancestorId: string): boolean => {
+    let curr = categoryMap.get(catId);
+    while (curr) {
+      if (curr.id === ancestorId) return true;
+      curr = curr.parentId ? categoryMap.get(curr.parentId) : undefined;
+    }
+    return false;
+  };
+
+  const getCatPath = (catId: string): string => {
+    const parts: string[] = [];
+    let curr = categoryMap.get(catId);
+    while (curr) {
+      parts.unshift(curr.name);
+      curr = curr.parentId ? categoryMap.get(curr.parentId) : undefined;
+    }
+    return parts.join(' → ');
+  };
+
   // Filter items based on search and category filter
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
       (item.itemCode && item.itemCode.toLowerCase().includes(itemSearch.toLowerCase())) ||
       (item.brand && item.brand.toLowerCase().includes(itemSearch.toLowerCase())) ||
-      (item.modelNumber && item.modelNumber.toLowerCase().includes(itemSearch.toLowerCase()));
+      (item.modelNumber && item.modelNumber.toLowerCase().includes(itemSearch.toLowerCase())) ||
+      (item.srNo && item.srNo.toLowerCase().includes(itemSearch.toLowerCase()));
 
     const matchesCategory =
       (!filterParentId && !filterSubId) ||
       (filterSubId && item.category.id === filterSubId) ||
-      (!filterSubId && filterParentId && (item.category.id === filterParentId || item.category.parentId === filterParentId));
+      (!filterSubId && filterParentId && isDescendantOf(item.category.id, filterParentId));
 
     return matchesSearch && matchesCategory;
   });
@@ -513,9 +538,7 @@ export default function ManageItemsPage() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredItems.map((item) => {
                       const isSelected = selectedIds.has(item.id);
-                      const catPath = item.category.parentId
-                        ? `${categories.find((c) => c.id === item.category.parentId)?.name} → ${item.category.name}`
-                        : item.category.name;
+                      const catPath = getCatPath(item.category.id);
 
                       return (
                         <tr
@@ -534,11 +557,20 @@ export default function ManageItemsPage() {
                             />
                           </td>
                           <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">{item.name}</div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-medium">
-                              {item.brand && <span>{item.brand}</span>}
-                              {item.itemCode && <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">{item.itemCode}</span>}
+                            <div className="flex items-start gap-1.5">
+                              {item.srNo && (
+                                <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded mt-0.5 shrink-0">
+                                  Sr. {item.srNo}
+                                </span>
+                              )}
+                              <div className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug">{item.name}</div>
                             </div>
+                            {item.brand && (
+                              <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                                <Building2 className="w-3 h-3 inline shrink-0" />
+                                <span>{item.brand}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-semibold">{catPath}</td>
                           <td className="py-3 px-4 font-mono font-black text-rose-600">{formatCurrency(item.costPrice)}</td>
@@ -553,13 +585,13 @@ export default function ManageItemsPage() {
                               >
                                 <Eye className="w-3.5 h-3.5" />
                               </Link>
-                              <button
-                                onClick={() => startEditItem(item)}
+                              <Link
+                                href={`/items/${item.id}/edit`}
                                 className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center justify-center transition-all"
-                                title="Edit Full Details"
+                                title="Edit in Central Form"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
-                              </button>
+                              </Link>
                               <button
                                 onClick={async () => {
                                   if (!confirm(`Delete "${item.name}"?`)) return;

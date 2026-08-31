@@ -29,3 +29,7 @@ yarn-error.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Temp extraction artifacts
+extracted_pages/
+extracted_pngs/

@@ -9,10 +9,24 @@ export async function GET() {
     const categories = await prisma.category.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: {
-        parent: true,
+        parent: {
+          include: {
+            parent: true,
+          },
+        },
         children: {
           orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
           include: {
+            parent: true,
+            children: {
+              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+              include: {
+                parent: true,
+                _count: {
+                  select: { items: true },
+                },
+              },
+            },
             _count: {
               select: { items: true },
             },

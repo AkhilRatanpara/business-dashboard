@@ -215,7 +215,14 @@ export default function DashboardPage() {
                           <div className="font-bold text-slate-900 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400">
                             {item.name}
                           </div>
-                          <div className="text-[10px] text-slate-500">{item.category.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {item.brand && (
+                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                {item.brand} •
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500">{item.category.name}</span>
+                          </div>
                         </td>
                         <td className="py-3 px-3 font-mono font-black text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20">{formatCurrency(item.costPrice)}</td>
                         <td className="py-3 px-3 font-mono font-bold text-cyan-700 dark:text-cyan-400">{formatCurrency(item.retailerPrice)}</td>
@@ -254,7 +261,14 @@ export default function DashboardPage() {
                         <div className="font-extrabold text-slate-900 dark:text-slate-100 text-sm hover:text-emerald-600 dark:hover:text-emerald-400">
                           {item.name}
                         </div>
-                        <div className="text-[10px] text-slate-500">{item.category.name}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {item.brand && (
+                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              {item.brand} •
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-500">{item.category.name}</span>
+                        </div>
                       </div>
                       <button
                         onClick={(e) => {

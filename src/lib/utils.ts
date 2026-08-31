@@ -81,3 +81,39 @@ export function formatDateTime(dateInput: Date | string): string {
     hour12: true,
   });
 }
+
+/**
+ * Intelligent fuzzy dimension & product smart search matching
+ * e.g. "283050" or "28 30 50" matches "L.B. BUSH 28x30x50"
+ */
+export function matchSmartSearch(text: string | null | undefined, query: string): boolean {
+  if (!query || !query.trim()) return true;
+  if (!text) return false;
+
+  const q = query.trim().toLowerCase();
+  const t = text.toLowerCase();
+
+  // 1. Exact or Substring match
+  if (t.includes(q)) return true;
+
+  // 2. Normalized dimension alphanumeric match (strips spaces, 'x', '*', '.', '-', '/', '"')
+  const cleanQ = q.replace(/[\s\.\-_x\*\/\\\"\'\,]/g, '');
+  const cleanT = t.replace(/[\s\.\-_x\*\/\\\"\'\,]/g, '');
+
+  if (cleanQ.length >= 2 && cleanT.includes(cleanQ)) {
+    return true;
+  }
+
+  // 3. Multi-token match (all words/numbers in query must match)
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (tokens.length > 1) {
+    const allMatch = tokens.every((tok) => {
+      const cleanTok = tok.replace(/[\s\.\-_x\*\/\\\"\'\,]/g, '');
+      return t.includes(tok) || (cleanTok.length >= 2 && cleanT.includes(cleanTok));
+    });
+    if (allMatch) return true;
+  }
+
+  return false;
+}
+

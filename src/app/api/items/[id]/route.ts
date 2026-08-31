@@ -12,7 +12,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       include: {
         category: {
           include: {
-            parent: true,
+            parent: {
+              include: {
+                parent: true,
+              },
+            },
           },
         },
         priceHistories: {
@@ -86,6 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const oldItemForLog = {
       id: existingItem.id,
       name: existingItem.name,
+      srNo: existingItem.srNo,
       itemCode: existingItem.itemCode,
       brand: existingItem.brand,
       modelNumber: existingItem.modelNumber,
@@ -99,29 +104,34 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       categoryParentId: existingItem.category?.parentId,
     };
 
+    const brandVal = body.brand !== undefined ? (body.brand?.trim() || null) : existingItem.brand;
+    const srNoVal = body.srNo !== undefined ? (body.srNo?.trim() || null) : existingItem.srNo;
+
+    // If brand changed or provided, ensure in Brand table
+    if (brandVal) {
+      await prisma.brand.upsert({
+        where: { name: brandVal },
+        update: {},
+        create: { name: brandVal },
+      });
+    }
+
     // Atomic update in Neon PostgreSQL
     const updatedItem = await prisma.$transaction(async (tx) => {
-      const catSrNoVal = body.catalogSrNo !== undefined ? (body.catalogSrNo !== '' ? parseInt(body.catalogSrNo) : null) : existingItem.catalogSrNo;
-      const varSrNoVal = body.variantSrNo !== undefined ? (body.variantSrNo !== '' ? parseInt(body.variantSrNo) : null) : existingItem.variantSrNo;
-      const srcPageVal = body.sourcePage !== undefined ? (body.sourcePage !== '' ? parseInt(body.sourcePage) : null) : existingItem.sourcePage;
-
       const updated = await tx.item.update({
         where: { id: params.id },
         data: {
           name: body.name !== undefined ? body.name.trim() : existingItem.name,
+          srNo: srNoVal,
           itemCode: body.itemCode !== undefined ? (body.itemCode?.trim() || null) : existingItem.itemCode,
           categoryId: body.categoryId !== undefined ? body.categoryId : existingItem.categoryId,
-          brand: body.brand !== undefined ? (body.brand?.trim() || null) : existingItem.brand,
+          brand: brandVal,
           modelNumber: body.modelNumber !== undefined ? (body.modelNumber?.trim() || null) : existingItem.modelNumber,
           costPrice: newCost,
           retailerPrice: newRetailer,
           customerPrice: newCustomer,
           unit: body.unit !== undefined ? (body.unit?.trim() || 'pcs') : existingItem.unit,
           notes: body.notes !== undefined ? (body.notes?.trim() || null) : existingItem.notes,
-          catalogSrNo: isNaN(Number(catSrNoVal)) ? null : catSrNoVal,
-          variantSrNo: isNaN(Number(varSrNoVal)) ? null : varSrNoVal,
-          catalogGroup: body.catalogGroup !== undefined ? (body.catalogGroup?.trim() || null) : existingItem.catalogGroup,
-          sourcePage: isNaN(Number(srcPageVal)) ? null : srcPageVal,
         },
         include: {
           category: {
@@ -157,6 +167,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           newData: {
             id: updated.id,
             name: updated.name,
+            srNo: updated.srNo,
             itemCode: updated.itemCode,
             brand: updated.brand,
             modelNumber: updated.modelNumber,
@@ -205,6 +216,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
           oldData: {
             id: item.id,
             name: item.name,
+            srNo: item.srNo,
             itemCode: item.itemCode,
             brand: item.brand,
             modelNumber: item.modelNumber,

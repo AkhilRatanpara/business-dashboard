@@ -29,6 +29,7 @@ model Item {
   itemCode      String?        @map("item_code")
   categoryId    String         @map("category_id")
   category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  srNo          String?        @map("sr_no")
   brand         String?
   modelNumber   String?        @map("model_number")
   costPrice     Decimal        @map("cost_price") @db.Decimal(12, 2)
@@ -48,11 +49,22 @@ model Item {
 
   @@index([name])
   @@index([itemCode])
+  @@index([brand])
+  @@index([srNo])
   @@index([categoryId])
   @@index([updatedAt])
   @@index([catalogGroup])
   @@index([categoryId, sortOrder])
   @@map("items")
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("brands")
 }
 
 model PriceHistory {
@@ -95,3 +107,4 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+

@@ -7,13 +7,14 @@ import { formatCurrency } from '@/lib/utils';
 interface Item {
   id: string;
   name: string;
-  itemCode?: string;
-  brand?: string;
-  modelNumber?: string;
+  srNo?: string | null;
+  itemCode?: string | null;
+  brand?: string | null;
+  modelNumber?: string | null;
   costPrice: number;
   retailerPrice: number;
   customerPrice: number;
-  unit?: string;
+  unit?: string | null;
   category: { id: string; name: string };
   updatedAt: string;
 }
@@ -91,7 +92,7 @@ function buildPrintHtml(
 
       tableRows += `
         <tr style="border-bottom:1px solid #e2e8f0;">
-          <td style="padding:8px 10px;color:#64748b;font-size:10px;font-family:monospace;text-align:center;vertical-align:middle;">${globalIdx++}</td>
+          <td style="padding:8px 10px;color:#64748b;font-size:10px;font-family:monospace;font-weight:700;text-align:center;vertical-align:middle;">${item.srNo || globalIdx++}</td>
           <td style="padding:8px 10px;font-weight:700;font-size:11px;color:#0f172a;vertical-align:middle;">
             ${item.name}${item.brand ? `<br><span style="font-weight:400;font-size:9px;color:#94a3b8;">${item.brand}</span>` : ''}
           </td>
