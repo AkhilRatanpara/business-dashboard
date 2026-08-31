@@ -322,18 +322,24 @@ function CategorySection({
           : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
       }`}
     >
-      {/* Category Accordion Header Button */}
+      {/* Category Accordion Header Button (Smooth Sticky Scroll Lock on Expand) */}
       <button
         type="button"
         onClick={() => onToggleCollapse(node.id)}
         className={`w-full flex items-center justify-between transition-colors text-left select-none cursor-pointer ${
-          isCollapsed ? 'rounded-2xl' : 'rounded-t-2xl border-b'
+          isCollapsed
+            ? 'rounded-2xl relative'
+            : depth === 0
+            ? 'sticky top-[49px] md:top-[53px] z-15 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md rounded-t-2xl border-b border-slate-200/90 dark:border-slate-800 shadow-xs'
+            : depth === 1
+            ? 'sticky top-[93px] md:top-[97px] z-14 bg-slate-100/98 dark:bg-slate-950/98 backdrop-blur-md rounded-t-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs'
+            : 'sticky top-[133px] md:top-[137px] z-13 bg-emerald-50/98 dark:bg-emerald-950/98 backdrop-blur-md rounded-t-lg border-b border-emerald-200/50 dark:border-emerald-900/30 shadow-xs'
         } ${
           depth === 0
-            ? 'px-3.5 py-3 sm:px-4 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border-slate-200/90 dark:border-slate-800'
+            ? 'px-3.5 py-3 sm:px-4 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850'
             : depth === 1
-            ? 'px-3 py-2.5 sm:px-3.5 sm:py-3 bg-slate-100/80 dark:bg-slate-950/80 hover:bg-slate-200/70 dark:hover:bg-slate-900 border-slate-200/80 dark:border-slate-800/80'
-            : 'px-3 py-2 sm:px-3 sm:py-2.5 bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 border-emerald-200/50 dark:border-emerald-900/30'
+            ? 'px-3 py-2.5 sm:px-3.5 sm:py-3 bg-slate-100/90 dark:bg-slate-950/90 hover:bg-slate-200/70 dark:hover:bg-slate-900'
+            : 'px-3 py-2 sm:px-3 sm:py-2.5 bg-emerald-50/70 dark:bg-emerald-950/50 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
