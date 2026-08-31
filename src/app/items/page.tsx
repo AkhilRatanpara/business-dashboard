@@ -193,7 +193,7 @@ function ItemCard({
   return (
     <div
       onClick={() => onNavigate(item.id)}
-      className="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-2.5 relative group flex flex-col justify-between"
+      className="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-2.5 z-0 group flex flex-col justify-between"
     >
       <div className="space-y-1.5">
         {/* Card Top: Sr No + Item Code + Quick Edit Button */}
@@ -316,9 +316,9 @@ function CategorySection({
     <div
       className={`rounded-2xl border transition-all ${
         depth === 0
-          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 shadow-xs'
+          ? 'glass-card border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs'
           : depth === 1
-          ? 'bg-slate-50/80 dark:bg-slate-950/60 border-slate-200/80 dark:border-slate-800/80'
+          ? 'bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800/80'
           : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40'
       }`}
     >
@@ -328,18 +328,18 @@ function CategorySection({
         onClick={() => onToggleCollapse(node.id)}
         className={`w-full flex items-center justify-between transition-colors text-left select-none cursor-pointer ${
           isCollapsed
-            ? 'rounded-2xl relative'
+            ? 'rounded-2xl'
             : depth === 0
-            ? 'sticky top-[49px] md:top-[53px] z-15 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md rounded-t-2xl border-b border-slate-200/90 dark:border-slate-800 shadow-xs'
+            ? 'sticky top-[49px] md:top-[53px] z-30 bg-white dark:bg-slate-900 rounded-t-2xl border-b border-slate-200/90 dark:border-slate-800 shadow-sm'
             : depth === 1
-            ? 'sticky top-[93px] md:top-[97px] z-14 bg-slate-100/98 dark:bg-slate-950/98 backdrop-blur-md rounded-t-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs'
-            : 'sticky top-[133px] md:top-[137px] z-13 bg-emerald-50/98 dark:bg-emerald-950/98 backdrop-blur-md rounded-t-lg border-b border-emerald-200/50 dark:border-emerald-900/30 shadow-xs'
+            ? 'sticky top-[95px] md:top-[100px] z-25 bg-slate-100 dark:bg-slate-950 rounded-t-xl border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm'
+            : 'sticky top-[138px] md:top-[144px] z-20 bg-emerald-50 dark:bg-emerald-950 rounded-t-lg border-b border-emerald-200/50 dark:border-emerald-900/30 shadow-sm'
         } ${
           depth === 0
-            ? 'px-3.5 py-3 sm:px-4 sm:py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850'
+            ? 'px-3.5 py-3 sm:px-4 sm:py-3.5 hover:bg-slate-50 dark:hover:bg-slate-850'
             : depth === 1
-            ? 'px-3 py-2.5 sm:px-3.5 sm:py-3 bg-slate-100/90 dark:bg-slate-950/90 hover:bg-slate-200/70 dark:hover:bg-slate-900'
-            : 'px-3 py-2 sm:px-3 sm:py-2.5 bg-emerald-50/70 dark:bg-emerald-950/50 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
+            ? 'px-3 py-2.5 sm:px-3.5 sm:py-3 hover:bg-slate-200/70 dark:hover:bg-slate-900'
+            : 'px-3 py-2 sm:px-3 sm:py-2.5 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
