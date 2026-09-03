@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, FolderTree, RefreshCw, History, ArrowUpRight, ArrowDownRight, Edit3, PlusCircle, Layers } from 'lucide-react';
+import { Package, FolderTree, RefreshCw, History, ArrowUpRight, ArrowDownRight, Edit3, PlusCircle, Layers, Folder, ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { QuickEditModal } from '@/components/items/QuickEditModal';
 import { notify } from '@/components/ui/Toast';
@@ -25,7 +25,9 @@ interface DashboardData {
     customerPrice: number;
     retailerProfit: number;
     customerProfit: number;
-    category: { name: string };
+    retailerMarkup: number;
+    customerMarkup: number;
+    category?: { id: string; name: string };
     updatedAt: string;
   }>;
   recentPriceChanges: Array<{
@@ -43,7 +45,13 @@ interface DashboardData {
     changedAt: string;
     item: { id: string; name: string };
   }>;
-  categoryStats: Array<{ id: string; name: string; count: number }>;
+  categoryStats: Array<{
+    id: string;
+    name: string;
+    parentId?: string | null;
+    sortOrder?: number;
+    count: number;
+  }>;
 }
 
 export default function DashboardPage() {
@@ -51,6 +59,38 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedItemForEdit, setSelectedItemForEdit] = useState<any>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const toggleCategoryExpand = (catId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedCategories((prev) => ({ ...prev, [catId]: !prev[catId] }));
+  };
+
+  const categoryTree = useMemo(() => {
+    if (!data?.categoryStats) return [];
+    const childrenMap = new Map<string, any[]>();
+    data.categoryStats.forEach((c) => {
+      if (c.parentId) {
+        if (!childrenMap.has(c.parentId)) childrenMap.set(c.parentId, []);
+        childrenMap.get(c.parentId)!.push(c);
+      }
+    });
+
+    const buildNode = (cat: any): any => {
+      const kids = childrenMap.get(cat.id) || [];
+      const childNodes = kids.map(buildNode);
+      const totalCount = cat.count + childNodes.reduce((sum: number, ch: any) => sum + ch.totalCount, 0);
+      return {
+        ...cat,
+        children: childNodes,
+        totalCount,
+      };
+    };
+
+    const roots = data.categoryStats.filter((c) => !c.parentId);
+    return roots.map(buildNode);
+  }, [data?.categoryStats]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -221,7 +261,7 @@ export default function DashboardPage() {
                                 {item.brand} •
                               </span>
                             )}
-                            <span className="text-[10px] text-slate-500">{item.category.name}</span>
+                            <span className="text-[10px] text-slate-500">{item.category?.name}</span>
                           </div>
                         </td>
                         <td className="py-3 px-3 font-mono font-black text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20">{formatCurrency(item.costPrice)}</td>
@@ -395,24 +435,127 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Category Overview */}
-      <div className="space-y-3">
-        <h2 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-          <span>Category Breakdown</span>
-        </h2>
+      {/* Category Overview - Minimal Collapsible Tree */}
+      <div className="glass-card rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-base font-black text-slate-900 dark:text-slate-100">
+              Category Catalog Hierarchy
+            </h2>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+              {categoryTree.length} Groups
+            </span>
+          </div>
+          <Link
+            href="/categories"
+            className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-extrabold flex items-center gap-1"
+          >
+            <span>Manage Categories</span>
+            <span>&rarr;</span>
+          </Link>
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          {data?.categoryStats.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/items?categoryId=${cat.id}`}
-              className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl p-3 transition-all group"
-            >
-              <div className="text-xs font-bold text-slate-900 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate">{cat.name}</div>
-              <div className="text-xs text-slate-500 mt-1 font-mono">{cat.count} items</div>
-            </Link>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {categoryTree.map((rootCat) => {
+            const hasChildren = rootCat.children.length > 0;
+            const isExpanded = !!expandedCategories[rootCat.id];
+
+            return (
+              <div
+                key={rootCat.id}
+                className="bg-slate-50/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 transition-all space-y-2.5 shadow-2xs hover:border-emerald-500/40"
+              >
+                {/* Parent Row */}
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    href={`/items?categoryId=${rootCat.id}`}
+                    className="flex items-center gap-2.5 min-w-0 flex-1 group"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-800 shrink-0 group-hover:border-emerald-500/40 transition-colors">
+                      <Folder className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate tracking-tight transition-colors">
+                        {rootCat.name}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {rootCat.totalCount} {rootCat.totalCount === 1 ? 'part' : 'parts'} total
+                      </p>
+                    </div>
+                  </Link>
+
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={(e) => toggleCategoryExpand(rootCat.id, e)}
+                      className="p-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold flex items-center gap-1 transition-all shrink-0 border border-slate-200 dark:border-slate-800 cursor-pointer"
+                      title={isExpanded ? 'Collapse subcategories' : 'Expand subcategories'}
+                    >
+                      <span className="text-[10px] font-mono">{rootCat.children.length} sub</span>
+                      {isExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-emerald-500" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/items?categoryId=${rootCat.id}`}
+                      className="p-1.5 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
+                </div>
+
+                {/* Nested Collapsible Subcategories Tree */}
+                {hasChildren && isExpanded && (
+                  <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 space-y-1 pl-1 animate-fade-in">
+                    {rootCat.children.map((sub: any) => (
+                      <div key={sub.id} className="space-y-0.5">
+                        <Link
+                          href={`/items?categoryId=${sub.id}`}
+                          className="flex items-center justify-between p-1.5 rounded-xl hover:bg-white dark:hover:bg-slate-900 text-xs text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-slate-300 dark:text-slate-600 font-mono text-[11px]">└</span>
+                            <span className="truncate font-semibold text-[11px] group-hover:underline">
+                              {sub.name}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800 shrink-0">
+                            {sub.totalCount ?? sub.count}
+                          </span>
+                        </Link>
+                        {sub.children && sub.children.length > 0 && (
+                          <div className="pl-4 space-y-0.5">
+                            {sub.children.map((subsub: any) => (
+                              <Link
+                                key={subsub.id}
+                                href={`/items?categoryId=${subsub.id}`}
+                                className="flex items-center justify-between py-1 px-2 rounded-lg hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 text-[11px] text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-slate-300 dark:text-slate-700 font-mono text-[9px]">├</span>
+                                  <span className="truncate group-hover:underline">
+                                    {subsub.name}
+                                  </span>
+                                </div>
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 shrink-0">
+                                  {subsub.count}
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -112,6 +112,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
   const [savingNew, setSavingNew] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   // Helper to trace 3-level categories from target ID
   const traceCategoryHierarchy = (leafId: string, allCats: Category[]) => {
@@ -953,41 +954,62 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
         </div>
 
         {/* ─── ACTION BUTTONS ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-200/80 dark:border-slate-800">
           <div>
-            {mode === 'edit' && (
+            {mode === 'edit' ? (
               <button
                 type="button"
                 disabled={deleting || saving || savingNew}
                 onClick={handleDelete}
-                className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>{deleting ? 'Deleting...' : 'Delete Item'}</span>
               </button>
+            ) : (
+              <Link
+                href={onCancel ? '#' : '/items'}
+                onClick={onCancel ? (e) => { e.preventDefault(); onCancel(); } : undefined}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-all inline-flex items-center justify-center"
+              >
+                Cancel
+              </Link>
             )}
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap justify-end">
-            <Link
-              href={onCancel ? '#' : (mode === 'edit' && itemId ? `/items/${itemId}` : '/items')}
-              onClick={onCancel ? (e) => { e.preventDefault(); onCancel(); } : undefined}
-              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-all"
-            >
-              Cancel
-            </Link>
-
-            {/* In Edit Mode: 3 Buttons (Cancel, Save & Create New, Save Changes) */}
             {mode === 'edit' && (
+              <Link
+                href={onCancel ? '#' : (itemId ? `/items/${itemId}` : '/items')}
+                onClick={onCancel ? (e) => { e.preventDefault(); onCancel(); } : undefined}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-all"
+              >
+                Cancel
+              </Link>
+            )}
+
+            {/* Save & Create / Duplicate Button */}
+            {mode === 'edit' ? (
               <button
                 type="button"
                 disabled={saving || savingNew}
-                onClick={(e) => handleSubmit(e, 'saveAsNew')}
+                onClick={() => setShowDuplicateWarning(true)}
                 className="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-                title="Create a brand new item in database with above details (preserves original item)"
+                title="Create a duplicate item with these specs (original item remains unchanged)"
               >
                 <FilePlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <span>{savingNew ? 'Creating...' : 'Save & Create New'}</span>
+                <span>{savingNew ? 'Creating...' : 'Save & Create (Clone)'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={saving || savingNew}
+                onClick={(e) => handleSubmit(e, 'saveAndAddAnother')}
+                className="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Save this item and stay on form to add another"
+              >
+                <PlusCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <span>Save & Create Another</span>
               </button>
             )}
 
@@ -995,7 +1017,7 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
             <button
               type="submit"
               disabled={saving || savingNew}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{saving ? 'Saving...' : (mode === 'edit' ? 'Save Changes' : 'Create Item')}</span>
@@ -1003,6 +1025,52 @@ export function ItemForm({ mode, initialData, itemId, onSuccess, onCancel }: Ite
           </div>
         </div>
       </form>
+
+      {/* ─── CONFIRMATION MODAL: SAVE & CREATE DUPLICATE WARNING ─────────────── */}
+      {showDuplicateWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fade-in">
+          <div className="glass-card w-full max-w-md rounded-2xl p-6 border border-amber-500/40 bg-white dark:bg-slate-900 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                  Confirm Duplicate Item Creation
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Creates a brand new catalog entry
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              You are about to create a brand new duplicate item in the catalog based on <strong>&quot;{name.trim() || 'this item'}&quot;</strong>.
+              The original item and its price history will remain <strong>completely untouched</strong> in the database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDuplicateWarning(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  setShowDuplicateWarning(false);
+                  handleSubmit(e, 'saveAsNew');
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md shadow-purple-600/20 transition-all cursor-pointer"
+              >
+                Yes, Create Duplicate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── INLINE MODAL: ADD PARENT CATEGORY ─────────────────────────────────── */}
       {showAddParentModal && (

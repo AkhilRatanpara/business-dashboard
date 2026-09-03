@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Edit3, Trash2, History, Building2, Calendar, Clock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, History, Building2, Calendar, Clock, Eye, EyeOff, ShieldCheck, Sparkles } from 'lucide-react';
 import { formatCurrency, formatDateTime, formatDate, formatMaskedPrice, formatProfit } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { notify } from '@/components/ui/Toast';
@@ -53,8 +53,27 @@ export default function ItemDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const [item, setItem] = useState<ItemDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [item, setItem] = useState<ItemDetails | null>(() => {
+    if (typeof window !== 'undefined' && id) {
+      try {
+        const preview = sessionStorage.getItem('gunatit_preview_item_' + id);
+        if (preview) {
+          const parsed = JSON.parse(preview);
+          return {
+            ...parsed,
+            priceHistories: parsed.priceHistories || [],
+          };
+        }
+      } catch {}
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && id) {
+      return !sessionStorage.getItem('gunatit_preview_item_' + id);
+    }
+    return true;
+  });
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -110,6 +129,8 @@ export default function ItemDetailPage() {
     }
   };
 
+  const [timeframe, setTimeframe] = useState<'ALL' | '1Y' | '6M' | '3M' | '1M' | '1W'>('ALL');
+
   if (loading) {
     return <div className="py-16 text-center text-slate-500 text-sm animate-pulse">Loading item details from database...</div>;
   }
@@ -127,40 +148,88 @@ export default function ItemDetailPage() {
 
   // Format history chart data (sorted chronological)
   const histories = [...item.priceHistories].reverse();
-  
-  const chartData = [];
-  
-  if (histories.length === 0) {
-    // Initial baseline registered price
-    chartData.push({
-      date: new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-      Cost: item.costPrice,
-      Retailer: item.retailerPrice,
-      Customer: item.customerPrice,
-    });
-    chartData.push({
-      date: 'Current',
-      Cost: item.costPrice,
-      Retailer: item.retailerPrice,
-      Customer: item.customerPrice,
-    });
-  } else {
-    chartData.push({
-      date: new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-      Cost: histories[0].oldCostPrice,
-      Retailer: histories[0].oldRetailerPrice,
-      Customer: histories[0].oldCustomerPrice,
-    });
 
-    histories.forEach((h) => {
-      const formattedDate = new Date(h.changedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      chartData.push({
-        date: formattedDate,
-        Cost: h.newCostPrice,
-        Retailer: h.newRetailerPrice,
-        Customer: h.newCustomerPrice,
-      });
+  // Determine true original initial baseline prices
+  const initialCost = histories.length > 0 ? Number(histories[0].oldCostPrice) : Number(item.costPrice);
+  const initialRetailer = histories.length > 0 ? Number(histories[0].oldRetailerPrice) : Number(item.retailerPrice);
+  const initialCustomer = histories.length > 0 ? Number(histories[0].oldCustomerPrice) : Number(item.customerPrice);
+
+  // Raw data points with raw timestamp (ONLY includes non-zero Retailer & Customer prices)
+  const rawChartPoints: Array<{
+    date: string;
+    timestamp: number;
+    Cost: number;
+    Retailer: number;
+    Customer: number;
+  }> = [];
+
+  // Baseline point (only added if retailer and customer were set to > 0 initially)
+  if (initialRetailer > 0 && initialCustomer > 0) {
+    rawChartPoints.push({
+      date: new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      timestamp: new Date(item.createdAt).getTime(),
+      Cost: initialCost,
+      Retailer: initialRetailer,
+      Customer: initialCustomer,
     });
+  }
+
+  // Revisions points (only include when retail and customer prices are non-zero)
+  histories.forEach((h) => {
+    const cost = Number(h.newCostPrice);
+    const ret = Number(h.newRetailerPrice);
+    const cust = Number(h.newCustomerPrice);
+    if (ret > 0 && cust > 0) {
+      rawChartPoints.push({
+        date: new Date(h.changedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        timestamp: new Date(h.changedAt).getTime(),
+        Cost: cost,
+        Retailer: ret,
+        Customer: cust,
+      });
+    }
+  });
+
+  // Current live point if not already added and both prices are non-zero
+  if (rawChartPoints.length === 0 && Number(item.retailerPrice) > 0 && Number(item.customerPrice) > 0) {
+    rawChartPoints.push({
+      date: 'Current',
+      timestamp: Date.now(),
+      Cost: Number(item.costPrice),
+      Retailer: Number(item.retailerPrice),
+      Customer: Number(item.customerPrice),
+    });
+  }
+
+  // If exactly 1 non-zero price point exists, provide a baseline start span so Recharts draws a visible baseline line
+  if (rawChartPoints.length === 1) {
+    rawChartPoints.unshift({
+      date: 'Start',
+      timestamp: rawChartPoints[0].timestamp - 60000,
+      Cost: rawChartPoints[0].Cost,
+      Retailer: rawChartPoints[0].Retailer,
+      Customer: rawChartPoints[0].Customer,
+    });
+  }
+
+  // Apply Timeframe Filter
+  const now = Date.now();
+  const getCutoff = () => {
+    switch (timeframe) {
+      case '1W': return now - 7 * 24 * 60 * 60 * 1000;
+      case '1M': return now - 30 * 24 * 60 * 60 * 1000;
+      case '3M': return now - 90 * 24 * 60 * 60 * 1000;
+      case '6M': return now - 180 * 24 * 60 * 60 * 1000;
+      case '1Y': return now - 365 * 24 * 60 * 60 * 1000;
+      case 'ALL':
+      default: return 0;
+    }
+  };
+
+  const cutoff = getCutoff();
+  let chartData = rawChartPoints.filter((pt) => pt.timestamp >= cutoff);
+  if (chartData.length === 0 && rawChartPoints.length > 0) {
+    chartData = rawChartPoints;
   }
 
   return (
@@ -351,35 +420,88 @@ export default function ItemDetailPage() {
 
       {/* Price Evolution Chart */}
       <div className="glass-card rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-4">
-        <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-sm">
-          <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Price Trend History</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-sm">
+            <History className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Price Trend History</span>
+          </div>
+
+          {/* Timeframe Filter Pills */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start sm:self-auto overflow-x-auto max-w-full">
+            {(['ALL', '1Y', '6M', '3M', '1M', '1W'] as const).map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => setTimeframe(tf)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 cursor-pointer ${
+                  timeframe === tf
+                    ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  fontSize: '12px',
+
+        {/* If no non-zero retail/customer prices have been set yet, show helpful prompt */}
+        {chartData.length === 0 ? (
+          <div className="py-12 px-4 text-center space-y-2.5 bg-slate-50/60 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+              <History className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              Price tracking begins once Retailer & Customer prices are set
+            </p>
+            <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+              Cost price is preserved from the catalog. Click &ldquo;Edit Item&rdquo; above to assign your first retail and consumer selling rates, and the graph will start tracking from that point.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Mobile-Friendly Horizontal Scroll Container */}
+            <div className="w-full overflow-x-auto pb-2">
+              <div
+                className="h-64"
+                style={{
+                  minWidth: chartData.length > 5 ? `${Math.max(450, chartData.length * 60)}px` : '100%',
                 }}
-                formatter={(value: any, name: any) => {
-                  if (name === 'Cost' && isPrivacyMode) return ['••••', 'Cost'];
-                  return [`₹${value}`, name];
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              {!isPrivacyMode && <Line type="monotone" dataKey="Cost" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3 }} />}
-              <Line type="monotone" dataKey="Retailer" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="Customer" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      domain={[
+                        (dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9)),
+                        (dataMax: number) => Math.ceil(dataMax * 1.08),
+                      ]}
+                      tickFormatter={(val) => `₹${val}`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: any, name: any) => {
+                        if (name === 'Cost' && isPrivacyMode) return ['••••', 'Cost'];
+                        return [`₹${value}`, name];
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                    {!isPrivacyMode && <Line type="monotone" dataKey="Cost" stroke="#f43f5e" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />}
+                    <Line type="monotone" dataKey="Retailer" stroke="#06b6d4" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="Customer" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Detailed History Table */}
@@ -412,20 +534,20 @@ export default function ItemDetailPage() {
                   <td className="py-2.5 px-3 font-mono font-bold text-rose-600 dark:text-rose-400 text-center">
                     {formatMaskedPrice(h.newCostPrice, isPrivacyMode)}
                   </td>
-                  <td className="py-2.5 px-3 font-mono font-bold text-cyan-600 dark:text-cyan-400 text-center">{formatCurrency(h.newRetailerPrice)}</td>
-                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-center">{formatCurrency(h.newCustomerPrice)}</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-cyan-600 dark:text-cyan-400 text-center">{h.newRetailerPrice > 0 ? formatCurrency(h.newRetailerPrice) : '—'}</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-center">{h.newCustomerPrice > 0 ? formatCurrency(h.newCustomerPrice) : '—'}</td>
                   <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 text-left font-medium">{h.changeNote || 'Price Revision'}</td>
                 </tr>
               ))}
 
-              {/* Baseline Creation Log */}
+              {/* Baseline Creation Log - Correct Initial Prices */}
               <tr className="bg-slate-50/50 dark:bg-slate-950/30 text-center font-medium">
                 <td className="py-2.5 px-3 font-mono text-slate-500 text-left">{formatDateTime(item.createdAt)}</td>
                 <td className="py-2.5 px-3 font-mono font-bold text-rose-600 dark:text-rose-400 text-center">
-                  {formatMaskedPrice(item.costPrice, isPrivacyMode)}
+                  {formatMaskedPrice(initialCost, isPrivacyMode)}
                 </td>
-                <td className="py-2.5 px-3 font-mono font-bold text-cyan-600 dark:text-cyan-400 text-center">{formatCurrency(item.retailerPrice)}</td>
-                <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-center">{formatCurrency(item.customerPrice)}</td>
+                <td className="py-2.5 px-3 font-mono font-bold text-cyan-600 dark:text-cyan-400 text-center">{initialRetailer > 0 ? formatCurrency(initialRetailer) : '—'}</td>
+                <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-center">{initialCustomer > 0 ? formatCurrency(initialCustomer) : '—'}</td>
                 <td className="py-2.5 px-3 text-emerald-700 dark:text-emerald-400 text-left font-bold">
                   Initial Catalog Registration
                 </td>

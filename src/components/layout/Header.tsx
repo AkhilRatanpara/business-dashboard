@@ -1,8 +1,9 @@
 'use client';
 
-import { Lock, Wrench, Search, Sun, Moon } from 'lucide-react';
+import { Lock, Search, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 interface HeaderProps {
   onLock: () => void;
@@ -15,17 +16,19 @@ export function Header({ onLock }: HeaderProps) {
     <header className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 px-3 md:px-6 h-[48px] md:h-[52px] flex items-center transition-colors shadow-2xs">
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
         {/* Mobile Brand Title */}
-        <div className="flex items-center gap-2.5 md:hidden">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-500/20">
-            <Wrench className="w-4 h-4 font-bold" />
+        <Link href="/" className="flex items-center gap-2 md:hidden min-w-0 shrink">
+          <div className="shrink-0">
+            <BrandLogo size={32} />
           </div>
-          <div>
-            <h1 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight tracking-tight">
-              GUNATIT SHOP
+          <div className="min-w-0 truncate">
+            <h1 className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-tight tracking-tight truncate">
+              Gunatit Submersible
             </h1>
-            <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider uppercase">Price Book</p>
+            <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider uppercase truncate">
+              Price Book
+            </p>
           </div>
-        </div>
+        </Link>
 
         {/* Desktop Quick Search Link */}
         <div className="hidden md:flex items-center gap-3 flex-1 max-w-md">

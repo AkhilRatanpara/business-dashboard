@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, FolderTree, History, Settings, PlusCircle, Wrench, Lock, Sun, Moon, RotateCcw } from 'lucide-react';
+import { LayoutDashboard, Package, FolderTree, History, Settings, PlusCircle, Lock, Sun, Moon, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Items (Price Book)', href: '/items', icon: Package },
   { name: 'Categories', href: '/categories', icon: FolderTree },
   { name: 'Price History', href: '/price-history', icon: History },
-  { name: 'Activity History', href: '/price-history?tab=activity', icon: RotateCcw },
+  { name: 'Activity & Recovery', href: '/history', icon: RotateCcw },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -22,14 +23,16 @@ export function Sidebar({ onLock }: { onLock: () => void }) {
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 backdrop-blur-xl h-screen sticky top-0 z-30 transition-colors">
       {/* Brand Header */}
-      <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
-            <Wrench className="w-5 h-5 font-bold" />
-          </div>
+          <BrandLogo size={42} />
           <div>
-            <h1 className="font-bold text-lg text-slate-900 dark:text-slate-100 leading-tight">GUNATIT</h1>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider">PUMP REPAIR PRICES</p>
+            <h1 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight tracking-tight">
+              Gunatit
+            </h1>
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider uppercase">
+              Submersible
+            </p>
           </div>
         </Link>
       </div>
@@ -54,6 +57,7 @@ export function Sidebar({ onLock }: { onLock: () => void }) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={cn(
                 'flex items-center gap-3.5 px-4 py-3 rounded-xl font-semibold text-sm transition-all group',
                 isActive

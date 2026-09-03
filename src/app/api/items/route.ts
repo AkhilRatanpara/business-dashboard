@@ -137,20 +137,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Natural sort by srNo within category if default/catalog sort
+    // Natural sort by srNo within category hierarchy if default/catalog sort
     if (sort === 'default' || sort === 'catalog') {
-      items.sort((a, b) => {
-        const catA = a.category?.sortOrder ?? 0;
-        const catB = b.category?.sortOrder ?? 0;
-        if (catA !== catB) return catA - catB;
+      const getLineage = (cat: any) => {
+        const path = [];
+        let cur = cat;
+        while (cur) {
+          path.unshift(cur);
+          cur = cur.parent;
+        }
+        return path;
+      };
 
-        const subCatA = a.category?.name ?? '';
-        const subCatB = b.category?.name ?? '';
-        if (a.category?.parentId && b.category?.parentId && a.category.parentId !== b.category.parentId) {
-          return subCatA.localeCompare(subCatB);
+      items.sort((a, b) => {
+        // 1. Compare full category path from Root down to Leaf
+        const pathA = getLineage(a.category);
+        const pathB = getLineage(b.category);
+
+        for (let i = 0; i < Math.max(pathA.length, pathB.length); i++) {
+          const nodeA = pathA[i];
+          const nodeB = pathB[i];
+          if (!nodeA) return -1;
+          if (!nodeB) return 1;
+          if (nodeA.id !== nodeB.id) {
+            const ordA = nodeA.sortOrder ?? 0;
+            const ordB = nodeB.sortOrder ?? 0;
+            if (ordA !== ordB) return ordA - ordB;
+            return (nodeA.name || '').localeCompare(nodeB.name || '');
+          }
         }
 
-        // Natural sort by Sr. No. (e.g. 1 < 1.1 < 1.2 < 2 < 10)
+        // 2. Within the exact same leaf category, compare item sortOrder first
+        if (a.sortOrder !== b.sortOrder && a.sortOrder !== 0 && b.sortOrder !== 0) {
+          return a.sortOrder - b.sortOrder;
+        }
+
+        // 3. Natural sort by Sr. No. (e.g. 1 < 1.1 < 1.2 < 2 < 12.1 < 12.54)
         const srComp = compareSrNo(a.srNo, b.srNo);
         if (srComp !== 0) return srComp;
 

@@ -6,24 +6,24 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
     // Auto purge older logs first to keep DB size small
     try {
       await prisma.auditLog.deleteMany({
         where: {
-          createdAt: { lt: sevenDaysAgo },
+          createdAt: { lt: fifteenDaysAgo },
         },
       });
     } catch (purgeError) {
       console.error('Error purging old audit logs:', purgeError);
     }
 
-    // Fetch logs from the last 7 days
+    // Fetch logs from the last 15 days
     const logs = await prisma.auditLog.findMany({
       where: {
-        createdAt: { gte: sevenDaysAgo },
+        createdAt: { gte: fifteenDaysAgo },
       },
       orderBy: {
         createdAt: 'desc',

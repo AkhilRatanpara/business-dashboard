@@ -50,7 +50,7 @@ export async function GET() {
         include: {
           _count: { select: { items: true } },
         },
-        orderBy: { items: { _count: 'desc' } },
+        orderBy: { sortOrder: 'asc' },
       }),
     ]);
 
@@ -84,6 +84,8 @@ export async function GET() {
     const categoryStats = categoriesWithCount.map((c) => ({
       id: c.id,
       name: c.name,
+      parentId: c.parentId,
+      sortOrder: c.sortOrder,
       count: c._count.items,
     }));
 

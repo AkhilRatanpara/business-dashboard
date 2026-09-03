@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RotateCcw, Trash2, Plus, Edit3, Clock, HelpCircle, RefreshCw, Terminal, Layers } from 'lucide-react';
+import {
+  ArrowLeft, RotateCcw, Trash2, Plus, Edit3, ShieldCheck,
+  RefreshCw, Package, Layers, Calendar, ArrowRight, CheckCircle2,
+  Tag, AlertCircle
+} from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
 
@@ -21,6 +25,8 @@ export default function HistoryPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'ALL' | 'DELETE' | 'UPDATE' | 'CREATE'>('DELETE');
+  const [onlyDeletedToggle, setOnlyDeletedToggle] = useState<boolean>(true);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -45,7 +51,7 @@ export default function HistoryPage() {
   }, []);
 
   const handleRestore = async (logId: string, label: string) => {
-    if (!confirm(`Are you sure you want to restore "${label}"?`)) return;
+    if (!confirm(`Are you sure you want to restore "${label}" back into your catalog?`)) return;
     setRestoringId(logId);
     try {
       const res = await fetch(`/api/audit-logs/${logId}/restore`, {
@@ -53,235 +59,197 @@ export default function HistoryPage() {
       });
       const data = await res.json();
       if (data.success) {
-        notify(data.message || 'Restored successfully', 'success');
+        notify(data.message || `Successfully restored "${label}"!`, 'success');
         fetchLogs();
       } else {
         notify(data.message || 'Restoration failed', 'error');
       }
-    } catch (err) {
+    } catch {
       notify('Error communicating with server', 'error');
     } finally {
       setRestoringId(null);
     }
   };
 
-  const getActionBadge = (action: string) => {
-    switch (action) {
-      case 'CREATE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-            <Plus className="w-3 h-3" /> Created
-          </span>
-        );
-      case 'UPDATE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
-            <Edit3 className="w-3 h-3" /> Updated
-          </span>
-        );
-      case 'DELETE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-            <Trash2 className="w-3 h-3" /> Deleted
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-            {action}
-          </span>
-        );
+  const filteredLogs = useMemo(() => {
+    if (onlyDeletedToggle) {
+      return logs.filter((l) => l.actionType === 'DELETE');
     }
-  };
+    if (filter === 'ALL') return logs;
+    return logs.filter((log) => log.actionType === filter);
+  }, [logs, filter, onlyDeletedToggle]);
 
-  const renderChangesDescription = (log: AuditLog) => {
-    const { actionType, entityType, oldData, newData } = log;
+  const deletedItemsCount = useMemo(() => {
+    return logs.filter((l) => l.actionType === 'DELETE').length;
+  }, [logs]);
 
-    if (actionType === 'DELETE') {
-      if (entityType === 'BATCH_ITEMS') {
-        const items = oldData?.items || [];
-        return (
-          <div className="text-xs space-y-1.5 mt-2 bg-slate-950 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Batch Items Deleted ({items.length})</span>
-            </div>
-            <div className="max-h-36 overflow-y-auto space-y-1 pr-1 text-[11px] font-semibold leading-relaxed">
-              {items.map((item: any, idx: number) => (
-                <p key={idx} className="truncate text-slate-400 hover:text-slate-200">
-                  <span className="text-slate-600 font-bold">[{idx + 1}]</span> {item.name}
-                  {item.brand && ` (${item.brand})`} - ₹{item.costPrice} Cost
-                </p>
-              ))}
-            </div>
-          </div>
-        );
-      }
-
-      if (entityType === 'ITEM') {
-        return (
-          <div className="text-xs space-y-1.5 mt-2 bg-slate-950 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Single Item Deleted</span>
-            </div>
-            <div className="space-y-0.5 text-[11px] font-semibold text-slate-400">
-              <p><span className="text-slate-600">ID:</span> {oldData?.id}</p>
-              <p><span className="text-slate-600">Name:</span> {oldData?.name}</p>
-              {oldData?.brand && <p><span className="text-slate-600">Brand:</span> {oldData?.brand}</p>}
-              <p>
-                <span className="text-slate-600">Prices:</span> Cost ₹{oldData?.costPrice} | Retailer ₹{oldData?.retailerPrice} | Customer ₹{oldData?.customerPrice}
-              </p>
-            </div>
-          </div>
-        );
-      }
-
-      // Category Delete
-      const itemLen = oldData?.items?.length || 0;
-      return (
-        <div className="text-xs space-y-1.5 mt-2 bg-slate-955 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-            <Terminal className="w-3.5 h-3.5" />
-            <span>System Event: Category Deleted</span>
-          </div>
-          <div className="space-y-0.5 text-[11px] font-semibold text-slate-400">
-            <p><span className="text-slate-600">Category:</span> {oldData?.name}</p>
-            {itemLen > 0 && (
-              <p className="text-[10px] text-amber-500 dark:text-amber-400 font-bold mt-1.5 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg inline-block">
-                ⚠ Cascade Warning: Restoring this category will also restore its {itemLen} items.
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (actionType === 'CREATE') {
-      return (
-        <div className="text-xs mt-2 bg-slate-950 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 text-emerald-500 dark:text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            <span>System Event: Master Record Inserted</span>
-          </div>
-          <p className="text-[11px] font-semibold text-slate-400">
-            Inserted {entityType.toLowerCase()} &quot;<span className="text-slate-200 font-bold">{newData?.name}</span>&quot; under category &quot;<span className="text-emerald-400">{newData?.categoryName || 'Master Root'}</span>&quot;
-          </p>
-        </div>
-      );
-    }
-
-    if (actionType === 'UPDATE') {
-      if (entityType === 'ITEM') {
-        const changes: string[] = [];
-        if (oldData && newData) {
-          if (oldData.name !== newData.name) {
-            changes.push(`[Name]  &quot;${oldData.name}&quot; -> &quot;${newData.name}&quot;`);
-          }
-          if (Number(oldData.costPrice) !== Number(newData.costPrice)) {
-            changes.push(`[Cost]  ₹${oldData.costPrice} -> ₹${newData.costPrice}`);
-          }
-          if (Number(oldData.retailerPrice) !== Number(newData.retailerPrice)) {
-            changes.push(`[Retail] ₹${oldData.retailerPrice} -> ₹${newData.retailerPrice}`);
-          }
-          if (Number(oldData.customerPrice) !== Number(newData.customerPrice)) {
-            changes.push(`[Cust]   ₹${oldData.customerPrice} -> ₹${newData.customerPrice}`);
-          }
-          if (oldData.brand !== newData.brand) {
-            changes.push(`[Brand]  &quot;${oldData.brand || 'None'}&quot; -> &quot;${newData.brand || 'None'}&quot;`);
-          }
-        }
-        return (
-          <div className="text-xs space-y-1 mt-2 bg-slate-950 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: State Delta Change</span>
-            </div>
-            {changes.length === 0 ? (
-              <p className="text-[11px] text-slate-500 italic">No primary fields updated</p>
-            ) : (
-              <div className="space-y-0.5 text-[11px] font-semibold text-emerald-400">
-                {changes.map((c, i) => (
-                  <p key={i} dangerouslySetInnerHTML={{ __html: `• ${c}` }} />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      } else {
-        return (
-          <div className="text-xs mt-2 bg-slate-955 dark:bg-black/45 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Category Updated</span>
-            </div>
-            <p className="text-[11px] font-semibold text-slate-400">
-              Renamed Category: &quot;{oldData?.name}&quot; &rarr; &quot;{newData?.name}&quot;
-            </p>
-          </div>
-        );
-      }
-    }
-
-    return null;
-  };
+  const updatesCount = useMemo(() => {
+    return logs.filter((l) => l.actionType === 'UPDATE').length;
+  }, [logs]);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-16">
+    <div className="space-y-6 max-w-4xl mx-auto pb-16 animate-fade-in">
       {/* Header Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all shadow-xs animate-in fade-in"
+            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all shadow-xs"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              <Layers className="w-7 h-7 text-emerald-600" />
-              <span>Activity History Log</span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2.5">
+              <ShieldCheck className="w-7 h-7 text-emerald-500" />
+              <span>Activity & Recovery Vault</span>
             </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Recover deleted items or rollback changes from the last 7 days
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              15-day backup logs with 1-click restore for deleted items and price revisions.
             </p>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={fetchLogs}
-          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-all"
+          className="self-start sm:self-auto p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-all shadow-xs flex items-center gap-2 text-xs font-bold"
           title="Refresh History"
         >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-500' : ''}`} />
+          <span>Refresh</span>
         </button>
       </div>
 
-      {/* Info Warning Banner */}
-      <div className="bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20 p-4 rounded-2xl flex items-start gap-3">
-        <Clock className="w-5 h-5 mt-0.5 shrink-0" />
-        <div className="text-xs">
-          <h4 className="font-extrabold mb-0.5">7-Day Rolling Retention Window</h4>
-          <p className="leading-relaxed">
-            All logs are automatically purged after 7 days to conserve database space. Deletions and edits performed within this window can be reverted or recovered with a single tap.
+      {/* 15-Day Automated Backup Protection Banner */}
+      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 flex items-start gap-3.5">
+        <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+        <div className="text-xs space-y-1">
+          <h4 className="font-black text-slate-900 dark:text-slate-100 text-sm">
+            15-Day Automated Backup Retention
+          </h4>
+          <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+            All deleted items, category changes, and rate revisions are safely preserved in this vault for 15 days.
+            If you accidentally delete an item, restore it below in 1 click.
           </p>
         </div>
       </div>
 
-      {/* History Feed */}
+      {/* Quick Slide Toggle: Deleted Items Only vs All Activity */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+            Vault Focus Mode:
+          </span>
+          <span className="text-[11px] text-slate-500 font-medium">
+            {onlyDeletedToggle ? 'Showing Deleted Items Rollback only' : 'Showing all revisions & system events'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setOnlyDeletedToggle(true);
+              setFilter('DELETE');
+            }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+              onlyDeletedToggle
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Deleted Recovery ({deletedItemsCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setOnlyDeletedToggle(false)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              !onlyDeletedToggle
+                ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            All Activity ({logs.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Tabs when not in strict Deleted Items Only mode */}
+      {!onlyDeletedToggle && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setFilter('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              filter === 'ALL'
+                ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            All Activity ({logs.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilter('DELETE')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filter === 'DELETE'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Deleted Items ({deletedItemsCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilter('UPDATE')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filter === 'UPDATE'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100'
+            }`}
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Price Revisions ({updatesCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilter('CREATE')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filter === 'CREATE'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'
+            }`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Items</span>
+          </button>
+        </div>
+      )}
+
+      {/* Activity Timeline List */}
       {loading ? (
-        <div className="py-20 text-center text-slate-500 text-sm animate-pulse">Loading recovery log entries...</div>
-      ) : logs.length === 0 ? (
+        <div className="py-20 text-center text-slate-500 text-xs animate-pulse">
+          Loading 15-day backup records from Neon DB...
+        </div>
+      ) : filteredLogs.length === 0 ? (
         <div className="glass-card rounded-3xl p-16 text-center border border-slate-200 dark:border-slate-800 space-y-3">
-          <HelpCircle className="w-12 h-12 text-slate-400 mx-auto" />
-          <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">No Recovery Logs Found</h3>
+          <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
+          <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">No Activity Records Found</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            You haven&apos;t made any changes in the last 7 days, or logs were recently purged. Delete or edit some items to test the backtrack feature.
+            {onlyDeletedToggle || filter === 'DELETE'
+              ? 'No items have been deleted in the last 15 days. Your active catalog is intact!'
+              : 'No log entries match your active filter within the 15-day backup retention period.'}
           </p>
           <div className="pt-2">
             <Link
               href="/items"
-              className="inline-block px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+              className="inline-block px-5 py-2.5 bg-emerald-600 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-emerald-600/20"
             >
               Back to Price Book
             </Link>
@@ -289,44 +257,154 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {logs.map((log) => {
+          {filteredLogs.map((log) => {
             const dateStr = formatDateTime(log.createdAt);
-            const label = log.entityName || `Entity #${log.entityId}`;
-            const canRestore = log.actionType === 'DELETE' || log.actionType === 'UPDATE';
+            const isDelete = log.actionType === 'DELETE';
+            const isUpdate = log.actionType === 'UPDATE';
+            const isCreate = log.actionType === 'CREATE';
 
-            return (
-              <div
-                key={log.id}
-                className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col transition-all hover:border-slate-350 dark:hover:border-slate-700 shadow-sm gap-3"
-              >
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {getActionBadge(log.actionType)}
-                    <span className="text-[10px] font-mono font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                      {log.entityType}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono font-bold">{dateStr}</span>
+            // ─── PROMINENT CARD FOR DELETED ITEMS (RESTORATION FOCUS) ───────────
+            if (isDelete) {
+              return (
+                <div
+                  key={log.id}
+                  className="glass-card rounded-2xl p-4 sm:p-5 border border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/15 transition-all shadow-xs space-y-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
+                        <Trash2 className="w-3 h-3" />
+                        <span>Deleted Item Backup</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono font-bold flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        <span>{dateStr}</span>
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRestore(log.id, log.entityName || 'item')}
+                      disabled={restoringId !== null}
+                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 ${restoringId === log.id ? 'animate-spin' : ''}`} />
+                      <span>Restore Item Now</span>
+                    </button>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                    <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">
-                      {label}
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                      {log.entityName || `Item #${log.entityId}`}
                     </h3>
-
-                    {canRestore && (
-                      <button
-                        onClick={() => handleRestore(log.id, label)}
-                        disabled={restoringId !== null}
-                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/10 transition-all disabled:opacity-50 h-9 shrink-0"
-                      >
-                        <RotateCcw className={`w-3.5 h-3.5 ${restoringId === log.id ? 'animate-spin' : ''}`} />
-                        <span>{log.actionType === 'DELETE' ? 'Restore Deleted' : 'Rollback Update'}</span>
-                      </button>
+                    {log.oldData?.categoryName && (
+                      <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1">
+                        <Layers className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Category: {log.oldData.categoryName}</span>
+                        {log.oldData?.brand && <span>• Brand: {log.oldData.brand}</span>}
+                      </p>
                     )}
                   </div>
 
-                  {renderChangesDescription(log)}
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-950 border border-rose-200/80 dark:border-rose-900/50 space-y-2">
+                    <div className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                      Backed-up rates at deletion time:
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="p-2 rounded-lg bg-rose-50/60 dark:bg-rose-950/30">
+                        <span className="block text-[10px] uppercase font-bold text-rose-600">Cost</span>
+                        <span className="font-mono font-bold text-rose-700 dark:text-rose-300">
+                          ₹{log.oldData?.costPrice || 0}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-cyan-50/60 dark:bg-cyan-950/30">
+                        <span className="block text-[10px] uppercase font-bold text-cyan-600">Retailer</span>
+                        <span className="font-mono font-bold text-cyan-700 dark:text-cyan-300">
+                          ₹{log.oldData?.retailerPrice || 0}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30">
+                        <span className="block text-[10px] uppercase font-bold text-emerald-600">Customer</span>
+                        <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                          ₹{log.oldData?.customerPrice || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              );
+            }
+
+            // ─── MINIMAL COMPACT 1-LINE BADGE ROW FOR PRICE REVISIONS ───────────
+            if (isUpdate) {
+              return (
+                <div
+                  key={log.id}
+                  className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-2xs"
+                >
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50 shrink-0">
+                      Rate Changed
+                    </span>
+                    <span className="font-black text-slate-900 dark:text-slate-100 truncate max-w-[200px] sm:max-w-xs">
+                      {log.entityName || `Item #${log.entityId}`}
+                    </span>
+                    {log.oldData && log.newData && (
+                      <div className="flex items-center gap-2 font-mono text-[11px] text-slate-500">
+                        {log.oldData.costPrice !== log.newData.costPrice && (
+                          <span>Cost ₹{log.oldData.costPrice} &rarr; ₹{log.newData.costPrice}</span>
+                        )}
+                        {log.oldData.retailerPrice !== log.newData.retailerPrice && (
+                          <span className="text-cyan-600 dark:text-cyan-400">Ret ₹{log.oldData.retailerPrice} &rarr; ₹{log.newData.retailerPrice}</span>
+                        )}
+                        {log.oldData.customerPrice !== log.newData.customerPrice && (
+                          <span className="text-emerald-600 dark:text-emerald-400">Cust ₹{log.oldData.customerPrice} &rarr; ₹{log.newData.customerPrice}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {dateStr}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRestore(log.id, log.entityName || 'item')}
+                      disabled={restoringId !== null}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-slate-700 dark:text-slate-300 hover:text-amber-600 text-[10px] font-bold flex items-center gap-1 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                      title="Revert prices to previous values"
+                    >
+                      <RotateCcw className={`w-3 h-3 ${restoringId === log.id ? 'animate-spin text-amber-500' : ''}`} />
+                      <span>Revert</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            // ─── COMPACT ROW FOR NEW ITEM CREATIONS ─────────────────────────────
+            return (
+              <div
+                key={log.id}
+                className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-2 shadow-2xs"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">
+                    New Added
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {log.entityName || `Item #${log.entityId}`}
+                  </span>
+                  {log.newData && (
+                    <span className="font-mono text-[11px] text-slate-400">
+                      (Cost ₹{log.newData.costPrice} • Ret ₹{log.newData.retailerPrice} • Cust ₹{log.newData.customerPrice})
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                  {dateStr}
+                </span>
               </div>
             );
           })}

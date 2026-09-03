@@ -39,9 +39,10 @@ interface DecimalLike {
 }
 
 /**
- * Calculate profit: sellingPrice - costPrice
+ * Calculate profit: sellingPrice - costPrice (returns 0 if selling price is not set)
  */
 export function calculateProfit(sellingPrice: number, costPrice: number): number {
+  if (!sellingPrice || sellingPrice <= 0) return 0;
   return Number((sellingPrice - costPrice).toFixed(2));
 }
 
@@ -52,7 +53,7 @@ export function calculateProfit(sellingPrice: number, costPrice: number): number
 export function formatProfit(profit: number | string | null | undefined): string {
   if (profit === null || profit === undefined) return '+0';
   const val = Number(profit);
-  if (isNaN(val)) return '+0';
+  if (isNaN(val) || val <= 0) return '+0';
   return new Intl.NumberFormat('en-IN', {
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
@@ -63,7 +64,7 @@ export function formatProfit(profit: number | string | null | undefined): string
  * Calculate Markup percentage: ((sellingPrice - costPrice) / costPrice) * 100
  */
 export function calculateMarkupPercent(sellingPrice: number, costPrice: number): number {
-  if (!costPrice || costPrice === 0) return 0;
+  if (!sellingPrice || sellingPrice <= 0 || !costPrice || costPrice <= 0) return 0;
   const markup = ((sellingPrice - costPrice) / costPrice) * 100;
   return Number(markup.toFixed(1));
 }
