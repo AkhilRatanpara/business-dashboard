@@ -265,7 +265,7 @@ function ItemCard({
             Retailer
           </span>
           <span className="font-mono font-black text-cyan-600 dark:text-cyan-400 text-sm sm:text-base mt-0.5">
-            {isPrivacyMode ? '••••' : formatCurrency(item.retailerPrice)}
+            {formatCurrency(item.retailerPrice)}
           </span>
           {!isPrivacyMode && item.retailerProfit !== undefined && item.retailerProfit > 0 && (
             <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
@@ -280,7 +280,7 @@ function ItemCard({
             Customer
           </span>
           <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm sm:text-base mt-0.5">
-            {isPrivacyMode ? '••••' : formatCurrency(item.customerPrice)}
+            {formatCurrency(item.customerPrice)}
           </span>
           {!isPrivacyMode && item.customerProfit !== undefined && item.customerProfit > 0 && (
             <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
