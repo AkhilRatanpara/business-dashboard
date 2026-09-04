@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   History, Search, ArrowUpRight, ArrowDownRight, RefreshCw,
-  Clock, HelpCircle, RotateCcw, Trash2, Plus, Edit3, Terminal, Layers
+  Layers
 } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { notify } from '@/components/ui/Toast';
+import { ActivityRecoveryVaultView } from '@/components/history/ActivityRecoveryVaultView';
 
 interface PriceHistoryRecord {
   id: string;
@@ -36,17 +37,6 @@ interface Category {
   name: string;
 }
 
-interface AuditLog {
-  id: string;
-  actionType: string;
-  entityType: string;
-  entityId: string;
-  entityName: string;
-  oldData: any;
-  newData: any;
-  createdAt: string;
-}
-
 function HistoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,11 +51,6 @@ function HistoryContent() {
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [filter, setFilter] = useState(''); // 'today', '7days', '30days'
-
-  // Tab 2 (Activity & Recovery) State
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loadingRecovery, setLoadingRecovery] = useState(true);
-  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   // Load Categories for Filter (Tab 1)
   useEffect(() => {
@@ -102,35 +87,6 @@ function HistoryContent() {
     }
   }, [search, categoryId, filter]);
 
-  // Fetch Recovery Logs (Tab 2)
-  const fetchRecoveryLogs = async () => {
-    setLoadingRecovery(true);
-    try {
-      const res = await fetch('/api/audit-logs', { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success) {
-        setLogs(data.logs);
-      } else {
-        notify('Failed to load recovery logs', 'error');
-      }
-    } catch (err) {
-      console.error('Error fetching recovery logs:', err);
-      notify('Network error loading history', 'error');
-    } finally {
-      setLoadingRecovery(false);
-    }
-  };
-
-  // Trigger Fetching depending on tab
-  useEffect(() => {
-    if (activeTab === 'revisions') {
-      const timer = setTimeout(() => fetchRevisions(), 200);
-      return () => clearTimeout(timer);
-    } else {
-      fetchRecoveryLogs();
-    }
-  }, [activeTab, fetchRevisions]);
-
   // Sync tab with query param changes
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -139,195 +95,18 @@ function HistoryContent() {
     }
   }, [searchParams, activeTab]);
 
+  // Fetch revisions when on revisions tab
+  useEffect(() => {
+    if (activeTab === 'revisions') {
+      const timer = setTimeout(() => fetchRevisions(), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, fetchRevisions]);
+
   // Update query param when tab is manually clicked
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     router.push(`/price-history?tab=${tab}`);
-  };
-
-  // Restore Handler (Tab 2)
-  const handleRestore = async (logId: string, label: string) => {
-    if (!confirm(`Are you sure you want to restore "${label}"?`)) return;
-    setRestoringId(logId);
-    try {
-      const res = await fetch(`/api/audit-logs/${logId}/restore`, {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (data.success) {
-        notify(data.message || 'Restored successfully', 'success');
-        fetchRecoveryLogs();
-      } else {
-        notify(data.message || 'Restoration failed', 'error');
-      }
-    } catch (err) {
-      notify('Error communicating with server', 'error');
-    } finally {
-      setRestoringId(null);
-    }
-  };
-
-  // Action badge resolver (Tab 2)
-  const getActionBadge = (action: string) => {
-    switch (action) {
-      case 'CREATE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-            <Plus className="w-3 h-3" /> Created
-          </span>
-        );
-      case 'UPDATE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
-            <Edit3 className="w-3 h-3" /> Updated
-          </span>
-        );
-      case 'DELETE':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-            <Trash2 className="w-3 h-3" /> Deleted
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-            {action}
-          </span>
-        );
-    }
-  };
-
-  // Render change log details (Tab 2)
-  const renderChangesDescription = (log: AuditLog) => {
-    const { actionType, entityType, oldData, newData } = log;
-
-    if (actionType === 'DELETE') {
-      if (entityType === 'BATCH_ITEMS') {
-        const items = oldData?.items || [];
-        return (
-          <div className="text-xs space-y-1.5 mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Batch Items Deleted ({items.length})</span>
-            </div>
-            <div className="max-h-36 overflow-y-auto space-y-1 pr-1 text-[11px] font-semibold leading-relaxed">
-              {items.map((item: any, idx: number) => (
-                <p key={idx} className="truncate text-slate-400 hover:text-slate-200">
-                  <span className="text-slate-600 font-bold">[{idx + 1}]</span> {item.name}
-                  {item.brand && ` (${item.brand})`} - ₹{item.costPrice} Cost
-                </p>
-              ))}
-            </div>
-          </div>
-        );
-      }
-
-      if (entityType === 'ITEM') {
-        return (
-          <div className="text-xs space-y-1.5 mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Single Item Deleted</span>
-            </div>
-            <div className="space-y-0.5 text-[11px] font-semibold text-slate-400">
-              <p><span className="text-slate-600">ID:</span> {oldData?.id}</p>
-              <p><span className="text-slate-600">Name:</span> {oldData?.name}</p>
-              {oldData?.brand && <p><span className="text-slate-600">Brand:</span> {oldData?.brand}</p>}
-              <p>
-                <span className="text-slate-600">Prices:</span> Cost ₹{oldData?.costPrice} | Retailer ₹{oldData?.retailerPrice} | Customer ₹{oldData?.customerPrice}
-              </p>
-            </div>
-          </div>
-        );
-      }
-
-      // Category Delete
-      const itemLen = oldData?.items?.length || 0;
-      return (
-        <div className="text-xs space-y-1.5 mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 text-rose-500 dark:text-rose-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-            <Terminal className="w-3.5 h-3.5" />
-            <span>System Event: Category Deleted</span>
-          </div>
-          <div className="space-y-0.5 text-[11px] font-semibold text-slate-400">
-            <p><span className="text-slate-600">Category:</span> {oldData?.name}</p>
-            {itemLen > 0 && (
-              <p className="text-[10px] text-amber-500 dark:text-amber-400 font-bold mt-1.5 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg inline-block font-sans">
-                ⚠ Cascade Warning: Restoring this category will also restore its {itemLen} items.
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (actionType === 'CREATE') {
-      return (
-        <div className="text-xs mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 text-emerald-500 dark:text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            <span>System Event: Master Record Inserted</span>
-          </div>
-          <p className="text-[11px] font-semibold text-slate-400">
-            Inserted {entityType.toLowerCase()} &quot;<span className="text-slate-200 font-bold">{newData?.name}</span>&quot; under category &quot;<span className="text-emerald-400">{newData?.categoryName || 'Master Root'}</span>&quot;
-          </p>
-        </div>
-      );
-    }
-
-    if (actionType === 'UPDATE') {
-      if (entityType === 'ITEM') {
-        const changes: string[] = [];
-        if (oldData && newData) {
-          if (oldData.name !== newData.name) {
-            changes.push(`[Name]  "${oldData.name}" -> "${newData.name}"`);
-          }
-          if (Number(oldData.costPrice) !== Number(newData.costPrice)) {
-            changes.push(`[Cost]  ₹${oldData.costPrice} -> ₹${newData.costPrice}`);
-          }
-          if (Number(oldData.retailerPrice) !== Number(newData.retailerPrice)) {
-            changes.push(`[Retail] ₹${oldData.retailerPrice} -> ₹${newData.retailerPrice}`);
-          }
-          if (Number(oldData.customerPrice) !== Number(newData.customerPrice)) {
-            changes.push(`[Cust]   ₹${oldData.customerPrice} -> ₹${newData.customerPrice}`);
-          }
-          if (oldData.brand !== newData.brand) {
-            changes.push(`[Brand]  "${oldData.brand || 'None'}" -> "${newData.brand || 'None'}"`);
-          }
-        }
-        return (
-          <div className="text-xs space-y-1 mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: State Delta Change</span>
-            </div>
-            {changes.length === 0 ? (
-              <p className="text-[11px] text-slate-500 italic">No primary fields updated</p>
-            ) : (
-              <div className="space-y-0.5 text-[11px] font-semibold text-emerald-400">
-                {changes.map((c, i) => (
-                  <p key={i}>• {c}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      } else {
-        return (
-          <div className="text-xs mt-2 bg-slate-950 p-3.5 rounded-xl font-mono text-slate-300 border border-slate-205 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-850 pb-1.5 mb-1.5">
-              <Terminal className="w-3.5 h-3.5" />
-              <span>System Event: Category Updated</span>
-            </div>
-            <p className="text-[11px] font-semibold text-slate-400">
-              Renamed Category: "{oldData?.name}" &rarr; "{newData?.name}"
-            </p>
-          </div>
-        );
-      }
-    }
-
-    return null;
   };
 
   return (
@@ -344,13 +123,15 @@ function HistoryContent() {
           </p>
         </div>
 
-        <button
-          onClick={activeTab === 'revisions' ? fetchRevisions : fetchRecoveryLogs}
-          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all shadow-xs"
-          title="Refresh Feed"
-        >
-          <RefreshCw className={`w-4 h-4 ${(activeTab === 'revisions' ? loadingRevisions : loadingRecovery) ? 'animate-spin text-emerald-500' : ''}`} />
-        </button>
+        {activeTab === 'revisions' && (
+          <button
+            onClick={fetchRevisions}
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-all shadow-xs cursor-pointer"
+            title="Refresh Price Revisions"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingRevisions ? 'animate-spin text-emerald-500' : ''}`} />
+          </button>
+        )}
       </div>
 
       {/* ── Tab Switcher ── */}
@@ -559,79 +340,9 @@ function HistoryContent() {
         </div>
       )}
 
-      {/* ── TAB 2: ACTIVITY & RECOVERY ── */}
+      {/* ── TAB 2: ACTIVITY & RECOVERY VAULT (15-DAY AUTOMATED BACKUP & 1-CLICK RESTORE) ── */}
       {activeTab === 'activity' && (
-        <div className="space-y-5">
-          {/* Info Retention Banner */}
-          <div className="bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20 p-4 rounded-2xl flex items-start gap-3">
-            <Clock className="w-5 h-5 mt-0.5 shrink-0" />
-            <div className="text-xs">
-              <h4 className="font-black mb-0.5">7-Day Recovery retention</h4>
-              <p className="leading-relaxed text-slate-600 dark:text-slate-400">
-                System activities are kept for 7 days. You can rollback price updates or recover deleted items inside this window.
-              </p>
-            </div>
-          </div>
-
-          {loadingRecovery ? (
-            <div className="py-14 text-center text-slate-550 text-xs animate-pulse flex items-center justify-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
-              <span>Fetching recovery logs...</span>
-            </div>
-          ) : logs.length === 0 ? (
-            <div className="glass-card rounded-2xl p-16 text-center border border-slate-205 dark:border-slate-800 space-y-3">
-              <HelpCircle className="w-12 h-12 text-slate-400 mx-auto" />
-              <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">No Recovery Logs Found</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No deletion or update logs exist in the current 7-day window.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {logs.map((log) => {
-                const dateStr = formatDateTime(log.createdAt);
-                const label = log.entityName || `Entity #${log.entityId}`;
-                const canRestore = log.actionType === 'DELETE' || log.actionType === 'UPDATE';
-
-                return (
-                  <div
-                    key={log.id}
-                    className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-xs gap-3"
-                  >
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {getActionBadge(log.actionType)}
-                        <span className="text-[10px] font-mono font-bold text-purple-650 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                          {log.entityType}
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-500 font-mono font-bold">{dateStr}</span>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                        <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-tight truncate">
-                          {label}
-                        </h3>
-
-                        {canRestore && (
-                          <button
-                            onClick={() => handleRestore(log.id, label)}
-                            disabled={restoringId !== null}
-                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 dark:bg-amber-600 hover:bg-amber-400 hover:scale-[1.01] active:scale-[0.98] text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50 h-9 shrink-0"
-                          >
-                            <RotateCcw className={`w-3.5 h-3.5 ${restoringId === log.id ? 'animate-spin' : ''}`} />
-                            <span>{log.actionType === 'DELETE' ? 'Restore Deleted' : 'Rollback Update'}</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {renderChangesDescription(log)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <ActivityRecoveryVaultView />
       )}
     </div>
   );

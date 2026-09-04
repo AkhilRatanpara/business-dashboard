@@ -18,26 +18,31 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   const handleKeyPress = (num: string) => {
-    if (loading || isUnlocked) return;
-    if (pin.length < 4) {
-      const nextPin = pin + num;
-      setPin(nextPin);
-      setError('');
+    if (isUnlocked) return;
+    setError('');
 
-      if (nextPin.length === 4) {
-        verifyPinCode(nextPin);
-      }
+    // If loading was somehow stuck or pin is already 4 digits, start fresh with new digit
+    const basePin = loading || pin.length >= 4 ? '' : pin;
+    if (loading) setLoading(false);
+
+    const nextPin = basePin + num;
+    setPin(nextPin);
+
+    if (nextPin.length === 4) {
+      verifyPinCode(nextPin);
     }
   };
 
   const handleBackspace = () => {
-    if (loading || isUnlocked) return;
+    if (isUnlocked) return;
+    if (loading) setLoading(false);
     setPin((prev) => prev.slice(0, -1));
     setError('');
   };
 
   const handleClear = () => {
-    if (loading || isUnlocked) return;
+    if (isUnlocked) return;
+    if (loading) setLoading(false);
     setPin('');
     setError('');
   };
@@ -45,20 +50,26 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
   const verifyPinCode = async (codeToVerify: string) => {
     setLoading(true);
     setError('');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
     try {
       const res = await fetch('/api/auth/pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin: codeToVerify }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (data.success) {
         setIsUnlocked(true);
         setTimeout(() => {
           onSuccess();
-        }, 350);
+        }, 300);
       } else {
         setError(data.message || 'Incorrect 4-digit PIN code');
         setIsShaking(true);
@@ -66,7 +77,8 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
         setPin('');
       }
     } catch {
-      setError('Server connection error. Please try again.');
+      clearTimeout(timeoutId);
+      setError('Connection timeout. Please try again.');
       setPin('');
     } finally {
       setLoading(false);
@@ -91,17 +103,7 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [pin, loading, isUnlocked]);
 
-  const keypadButtons = [
-    { num: '1', letters: '' },
-    { num: '2', letters: 'ABC' },
-    { num: '3', letters: 'DEF' },
-    { num: '4', letters: 'GHI' },
-    { num: '5', letters: 'JKL' },
-    { num: '6', letters: 'MNO' },
-    { num: '7', letters: 'PQRS' },
-    { num: '8', letters: 'TUV' },
-    { num: '9', letters: 'WXYZ' },
-  ];
+  const keypadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   return (
     <div
@@ -194,21 +196,16 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
           )}
 
           {/* Keypad Grid */}
-          <div className="grid grid-cols-3 gap-3 w-full mb-2">
-            {keypadButtons.map((btn) => (
+          <div className="grid grid-cols-3 gap-3 w-full mb-2 select-none">
+            {keypadDigits.map((digit) => (
               <button
-                key={btn.num}
+                key={digit}
                 type="button"
-                onClick={() => handleKeyPress(btn.num)}
-                disabled={loading || isUnlocked}
-                className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:bg-emerald-500 text-slate-900 dark:text-slate-100 active:text-slate-950 flex flex-col items-center justify-center transition-all active:scale-95 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/50 shadow-2xs group cursor-pointer disabled:opacity-50"
+                onClick={() => handleKeyPress(digit)}
+                disabled={isUnlocked}
+                className="h-14 sm:h-15 rounded-2xl bg-slate-100 dark:bg-slate-800/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:bg-emerald-500 text-slate-900 dark:text-slate-100 active:text-slate-950 flex items-center justify-center transition-transform duration-75 active:scale-90 border border-slate-200/90 dark:border-slate-700/60 hover:border-emerald-500/50 shadow-xs cursor-pointer touch-manipulation select-none disabled:opacity-50"
               >
-                <span className="text-lg font-black leading-none group-active:text-slate-950">{btn.num}</span>
-                {btn.letters && (
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-active:text-slate-950">
-                    {btn.letters}
-                  </span>
-                )}
+                <span className="text-2xl font-black">{digit}</span>
               </button>
             ))}
 
@@ -216,8 +213,8 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
             <button
               type="button"
               onClick={handleClear}
-              disabled={loading || isUnlocked}
-              className="h-14 rounded-2xl bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-xs font-bold flex items-center justify-center transition-all active:scale-95 border border-slate-200 dark:border-slate-800 cursor-pointer disabled:opacity-50"
+              disabled={isUnlocked}
+              className="h-14 sm:h-15 rounded-2xl bg-slate-100/70 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-xs font-black uppercase tracking-wider flex items-center justify-center transition-transform duration-75 active:scale-90 border border-slate-200 dark:border-slate-800 cursor-pointer touch-manipulation select-none disabled:opacity-50"
             >
               Clear
             </button>
@@ -226,18 +223,18 @@ export function PinLockModal({ onSuccess }: PinLockModalProps) {
             <button
               type="button"
               onClick={() => handleKeyPress('0')}
-              disabled={loading || isUnlocked}
-              className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:bg-emerald-500 text-slate-900 dark:text-slate-100 active:text-slate-950 flex flex-col items-center justify-center transition-all active:scale-95 border border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500/50 shadow-2xs group cursor-pointer disabled:opacity-50"
+              disabled={isUnlocked}
+              className="h-14 sm:h-15 rounded-2xl bg-slate-100 dark:bg-slate-800/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:bg-emerald-500 text-slate-900 dark:text-slate-100 active:text-slate-950 flex items-center justify-center transition-transform duration-75 active:scale-90 border border-slate-200/90 dark:border-slate-700/60 hover:border-emerald-500/50 shadow-xs cursor-pointer touch-manipulation select-none disabled:opacity-50"
             >
-              <span className="text-lg font-black leading-none group-active:text-slate-950">0</span>
+              <span className="text-2xl font-black">0</span>
             </button>
 
             {/* Backspace Button */}
             <button
               type="button"
               onClick={handleBackspace}
-              disabled={loading || isUnlocked}
-              className="h-14 rounded-2xl bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center justify-center transition-all active:scale-95 border border-slate-200 dark:border-slate-800 cursor-pointer disabled:opacity-50"
+              disabled={isUnlocked}
+              className="h-14 sm:h-15 rounded-2xl bg-slate-100/70 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 flex items-center justify-center transition-transform duration-75 active:scale-90 border border-slate-200 dark:border-slate-800 cursor-pointer touch-manipulation select-none disabled:opacity-50"
               title="Backspace"
             >
               <Delete className="w-5 h-5" />

@@ -17,8 +17,8 @@ export function Header({ onLock }: HeaderProps) {
       <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
         {/* Mobile Brand Title */}
         <Link href="/" className="flex items-center gap-2 md:hidden min-w-0 shrink">
-          <div className="shrink-0">
-            <BrandLogo size={32} />
+          <div className="shrink-0 flex items-center justify-center">
+            <BrandLogo size={34} />
           </div>
           <div className="min-w-0 truncate">
             <h1 className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100 leading-tight tracking-tight truncate">
