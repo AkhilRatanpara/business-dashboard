@@ -11,11 +11,21 @@ export interface ToastMessage {
 }
 
 let toastListener: ((toast: ToastMessage) => void) | null = null;
+let lastToastText = '';
+let lastToastTime = 0;
 
 export function notify(text: string, type: 'success' | 'error' | 'info' = 'success') {
+  const now = Date.now();
+  // Prevent duplicate toast spam within 800ms
+  if (lastToastText === text && now - lastToastTime < 800) {
+    return;
+  }
+  lastToastText = text;
+  lastToastTime = now;
+
   if (toastListener) {
     toastListener({
-      id: Date.now().toString(),
+      id: `${now}-${Math.random().toString(36).substring(2, 7)}`,
       text,
       type,
     });

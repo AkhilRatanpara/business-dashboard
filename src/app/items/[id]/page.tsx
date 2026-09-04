@@ -86,12 +86,10 @@ export default function ItemDetailPage() {
   }, []);
 
   const togglePrivacyMode = () => {
-    setIsPrivacyMode((prev) => {
-      const next = !prev;
-      localStorage.setItem('gunatit_privacy_mode', next.toString());
-      notify(next ? 'Privacy Mode ON (Cost & Profit hidden)' : 'Privacy Mode OFF (All prices shown)', 'info');
-      return next;
-    });
+    const next = !isPrivacyMode;
+    setIsPrivacyMode(next);
+    localStorage.setItem('gunatit_privacy_mode', next.toString());
+    notify(next ? 'Privacy Mode ON (Cost & Profit hidden)' : 'Privacy Mode OFF (All prices shown)', 'info');
   };
 
   useEffect(() => {
